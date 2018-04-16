@@ -9,12 +9,12 @@ require('glmnet')
 source('sim.R')
 rdata<-read.csv('racing_data.csv', header=F)
 
-max.k = 1
+max.k = 3
 file.idx = 1
 inner.iter = 10
 seed.value = 1
 
-tau.result.matrix <- matrix(0, inner.iter, max.k + 1)
+tau.result.matrix <- matrix(0, inner.iter, max.k + 2)
 
 seed.value = 1
 for ( seed.value in 1:inner.iter)
@@ -234,19 +234,8 @@ for ( seed.value in 1:inner.iter)
     ##### end of pairwise learning ######
     
     ### make the test set #####
-    r2.mat<- as.matrix(rdata[-sample.idx,18:33])
-    num.vec<- rdata$V1[-sample.idx]
-    i = 1
-    for (i in 1:length(num.vec))
-    {
-      obs_cars <- r2.mat[i,][1:num.vec[i]]
-      rank_true <- 1:length(obs_cars)
-      rank_hat_inv  <- order( naive.est[obs_cars])
-      2^rank_hat_inv-1/log(1+rank_true)/log(2)
-    }
-
-    r2.mat<- as.matrix(rdata[-sample.idx,18:33])
     ## test set의 각 게임당 선택 차종 
+    r2.mat<- as.matrix(rdata[-sample.idx,18:33])
     num.vec<- rdata$V1[-sample.idx]
     n.mat <- matrix(0, 43, 43)
     w.mat <- matrix(0, 43, 43)
@@ -270,16 +259,26 @@ for ( seed.value in 1:inner.iter)
     ######## evaluate performances of standard BT estimator ####    
     
     naive.rankest <- 44 - rank(naive.est)
-    naive.tau <- 0
-    for ( i in 1:43)
+    perform1 <- rep(0, length(num.vec))
+    for (i in 1:length(num.vec))
     {
-      for (j in 1:43)
-      {
-        if ( n.mat[i,j] == 0 ) next ## 대결해본 적 없는 쌍은 제외 
-        naive.tau <- naive.tau - sign(naive.rankest[i] - naive.rankest[j])*w.mat[i,j]
-      }
+      obs_cars <- r2.mat[i,][1:num.vec[i]]
+      rank_true <- 1:length(obs_cars)
+      rank_hat  <- order( naive.est[obs_cars], decreasing = T)
+      perform1[i] <- cor(rank_true, rank_hat, method = "kendall")
     }
-    tau.result.matrix[seed.value, 1] <- naive.tau/sum(n.mat)
+    tau.result.matrix[seed.value, 1] <- mean(perform1)
+    
+    # naive.tau <- 0
+    # for ( i in 1:43)
+    # {
+    #   for (j in 1:43)
+    #   {
+    #     if ( n.mat[i,j] == 0 ) next ## 대결해본 적 없는 쌍은 제외 
+    #     naive.tau <- naive.tau - sign(naive.rankest[i] - naive.rankest[j])*w.mat[i,j]
+    #   }
+    # }
+    #tau.result.matrix[seed.value, 1] <- naive.tau/sum(n.mat)
 
     ######## evaluate performances of the two estimator ####    
     k = 0
@@ -310,18 +309,26 @@ for ( seed.value in 1:inner.iter)
       gbt.est <- c(fit$beta[,1],0)
       gbt.rankest <- 44 - rank(gbt.est)
 
-      
-      gbt.tau <- 0 
-      #i = 24 ; j = 3
-      for ( i in 1:43)
+      perform2 <- rep(0, length(num.vec))
+      for (i in 1:length(num.vec))
       {
-        for (j in 1:43)
-        {
-          if ( n.mat[i,j] == 0 ) next
-          gbt.tau <- gbt.tau - sign(gbt.rankest[i] - gbt.rankest[j])*w.mat[i,j]    
-        }
+        obs_cars <- r2.mat[i,][1:num.vec[i]]
+        rank_true <- 1:length(obs_cars)
+        rank_hat  <- order( gbt.est[obs_cars], decreasing = T)
+        perform2[i] <- cor(rank_true, rank_hat, method = "kendall")
       }
-      tau.result.matrix[seed.value, k+1] <- gbt.tau/sum(n.mat)
+      tau.result.matrix[seed.value, k+2] <- mean(perform2)
+      # gbt.tau <- 0 
+      # #i = 24 ; j = 3
+      # for ( i in 1:43)
+      # {
+      #   for (j in 1:43)
+      #   {
+      #     if ( n.mat[i,j] == 0 ) next
+      #     gbt.tau <- gbt.tau - sign(gbt.rankest[i] - gbt.rankest[j])*w.mat[i,j]    
+      #   }
+      # }
+      # tau.result.matrix[seed.value, k+1] <- gbt.tau/sum(n.mat)
     }
     report.v <- colMeans(tau.result.matrix[1:seed.value,,drop = F], na.rm = T )
     cat('now::::\n')
