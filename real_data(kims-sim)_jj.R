@@ -10,10 +10,11 @@ source('real_lib.R')
 require('glmnet')
 
 rdata<-read.csv('racing_data.csv', header=F)
-max_k = 1
+max_k = 15
+cvec_r <- seq(0, max_k, by = 5)
 file_idx = 1
 inner_iter = 10
-tau_result_matrix <- matrix(0, inner_iter, max_k + 2)
+tau_result_matrix <- matrix(0, inner_iter, length(cvec_r)+1)
 
 seed_v = 1
 
@@ -22,7 +23,7 @@ for ( seed_v in 1:inner_iter)
   seed_v_i = (file_idx -1)*inner_iter + seed_v
   set.seed(seed_v_i)
   sc_list = vector(mode ='list', length = max_k)
-  sample_idx <- sort( sample(1:nrow(rdata), trunc(nrow(rdata)*0.7)))  ## 논문에 나온대로 7:3으로 뽑음. 
+  sample_idx <- sort( sample(1:nrow(rdata), trunc(nrow(rdata)*0.8)))  ## 논문에 나온대로 7:3으로 뽑음. 
 
     # cross validation : 여기서 sample 다시 생성해야 함!
   race_mat <- as.matrix(rdata[sample_idx,18:33])   ## train set의 각 게임당 선택 차종 
@@ -40,8 +41,9 @@ for ( seed_v in 1:inner_iter)
   ######## gBT fit
   ###############################
   # set weight-vector 
-  cvec <- (0:max_k)/n*2 ## cvec : threshold c vector
-  sc_list <- sc_listFun(cvec, Qpmat, Gmat_hat, k, max_k)
+  
+  cvec <- cvec_r/n*2 ## cvec : threshold c vector
+  sc_list <- sc_listFun(cvec, Qpmat, Gmat_hat)
   ##### end of pairwise learning ######
   ### make the test set #####
   ## test set의 각 게임당 선택 차종 
@@ -51,14 +53,46 @@ for ( seed_v in 1:inner_iter)
   tau_result_matrix[seed_v, 1] <- naive_eval(race_mat_test,num_vec_test,
                                              naive_est)
 ######## evaluate performances of the two estimator ####    
-  tau_result_matrix[seed_v, 2:(max_k+2)]<- 
-                gbt_eval(sc_list, race_mat_test, num_vec_test, max_k)
+  tau_result_matrix[seed_v, 2:(length(cvec)+1)]<- 
+                gbt_eval(sc_list, race_mat_test, num_vec_test, cvec)
   report_v <- colMeans(tau_result_matrix[1:seed_v,,drop = F], na.rm = T )
   cat('now::::\n')
   cat(round(report_v,5),'\n')
 }
     
- 
+### Cross validation
+
+cvec_r <- seq(0, max_k, by = 5)
+seed_v_i = (file_idx -1)*inner_iter + seed_v
+set.seed(seed_v_i)
+sample_idx <- sort( sample(1:nrow(rdata), trunc(nrow(rdata)*0.7)))  ## 논문에 나온대로 7:3으로 뽑음. 
+sid <- sample(1:5, length(sample_idx), replace = TRUE)
+cv_k = 1
+cv_err<- NULL
+for (cv_k in 1:5)
+{
+  sample_idx_cvtr<- sample_idx[sid!=cv_k]
+  race_mat <- as.matrix(rdata[sample_idx_cvtr,18:33])   ## train set의 각 게임당 선택 차종 
+  num_vec<- rdata$V1[sample_idx_cvtr]  ## 각 게임마다 참여한 유저 수 
+  Qmat_fit <-QmatFunc(race_mat, num_vec)  
+  Qpmat = Qmat_fit$Qpmat  
+  Gmat_hat = Qmat_fit$Gmat_hat
+  x = Qmat_fit$x
+  y = Qmat_fit$y
+  n = Qmat_fit$n
+  cvec <- cvec_r/n*2
+  sc_list <- sc_listFun(cvec, Qpmat, Gmat_hat)
+  ##### end of pairwise learning ######
+  ### make the test set #####
+  ## test set의 각 게임당 선택 차종 
+  sample_idx_cvte<- sample_idx[sid==cv_k]
+  race_mat_test<- as.matrix(rdata[sample_idx_cvte,18:33])
+  num_vec_test <- rdata$V1[sample_idx_cvte]
+  ######## evaluate performances of standard BT estimator ####    
+  tmp = gbt_eval(sc_list, race_mat_test, num_vec_test, cvec)
+  cv_err <- rbind(cv_err, tmp)
+}
+
   
   
 

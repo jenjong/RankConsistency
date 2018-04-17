@@ -6,7 +6,8 @@ naive_btFunc<- function(x,y,Qpmat, Gmat_hat)
   wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  ## w_jj 제거 
   # fit glmnet
   fit <- glmnet(x, y, family = 'binomial',
-                intercept = FALSE, weights = wvec, lambda = 0, standardize = F, thresh = 1e-09)
+                intercept = FALSE, weights = wvec, lambda = 0, standardize = F, 
+                thresh = 1e-09)
   est = c(fit$beta[,1],0) ## lambda_43 추가 
   naive_est <- est
   return( naive_est )
@@ -73,13 +74,13 @@ QmatFunc <- function(race_mat, num_vec)
 }
 
 
-sc_listFun<-function(cvec, Qpmat, Gmat_hat, k, max_k)
+sc_listFun<-function(cvec, Qpmat, Gmat_hat)
 {
   sc_list = list()
   p = ncol(Qpmat)
-  for ( k in 0:max_k)
+  for ( k in 1:length(cvec))
   {
-    cat('thershold::', k, '\n')
+    cat('thershold::', k-1, '\n')
     i1 = 1 ; i2 = 2
     idx = 1
     result = matrix(0, p*(p-1)/2, 4)
@@ -88,8 +89,8 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat, k, max_k)
       for (i2 in (i1+1):p) 
       {
         Qpmat.c1 = Qpmat
-        idx1 <- ( Qpmat.c1[i1,] <= cvec[k+1] )
-        idx2 <- ( Qpmat.c1[i2,] <= cvec[k+1] )
+        idx1 <- ( Qpmat.c1[i1,] <= cvec[k] )
+        idx2 <- ( Qpmat.c1[i2,] <= cvec[k] )
         if (sum(idx1)>0 )
         {
           Qpmat.c1[i1,idx1] <- 0 ;  Qpmat.c1[idx1,i1] <- 0
@@ -102,7 +103,7 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat, k, max_k)
         
         Qpmat.c2 = Qpmat.c1
         ## thresholding procedure
-        Qpmat.c2 = Qpmat.c2*(Qpmat.c2>cvec[k+1])  
+        Qpmat.c2 = Qpmat.c2*(Qpmat.c2>cvec[k])  
         
         nvec1 = Qpmat.c1[i1,]
         nvec2 = Qpmat.c1[i2,]
@@ -121,10 +122,11 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat, k, max_k)
         
         ## find V_jk(maximum connected set)                
         i1i2_adj_matrix = matrix(as.integer(Qpmat.c2>0) , p , p)  ## adjacency matrix
-        i1i2_graph = graph_from_adjacency_matrix(i1i2_adj_matrix , mode="undirected" , weighted=NULL) ## make a graph
+        i1i2_graph = graph_from_adjacency_matrix(i1i2_adj_matrix , 
+                                                 mode="undirected" , weighted=NULL) ## make a graph
         i1i2_clusters = clusters(i1i2_graph)$mem ## clustering using adj matrix
         if (i1i2_clusters[i1] != i1i2_clusters[i2]){  ## i1과 i2가 다른 connected 되지 않은 경우
-          cat('   k:',k,', ',i1,'and',i2, 'is not connected!!\n')
+          cat('   k:',k-1,', ',i1,'and',i2, 'is not connected!!\n')
           idx = idx + 1
           next  
         } 
@@ -156,7 +158,9 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat, k, max_k)
         xx = xx[,-pp]
         
         try.fit <- try(fit <- glmnet(xx, yy, family = 'binomial',
-                                     intercept = FALSE, weights = wvec, lambda = 0.0001, alpha = 0, standardize = F, thresh = 1e-09),
+                                     intercept = FALSE, weights = wvec, 
+                                     lambda = 0.0001, alpha = 0, standardize = F,
+                                     thresh = 1e-09),
                        silent = T)
         if (class(try.fit)[1] == 'try-error')  
         {
@@ -171,7 +175,7 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat, k, max_k)
         idx = idx + 1
       }
     }
-    sc_list[[k+1]] <- result
+    sc_list[[k]] <- result
   }
   return( sc_list )
 }
@@ -190,19 +194,17 @@ naive_eval <- function(race_mat_test, num_vec_test, naive_est)
   return(mean(perform_v))
 }
 
-gbt_eval <- function(sc_list,race_mat_test, num_vec_test, max_k)
+gbt_eval <- function(sc_list,race_mat_test, num_vec_test, cvec)
 {
-  tau_result_vec <- rep(0, max_k+1)
-  k = 0
-  
-  for (k in 0:max_k)
+  tau_result_vec <- rep(0, length(cvec))
+  for (k in 1:length(cvec))
   {
-    tmp<-sc_list[[k+1]]
+    tmp<-sc_list[[k]]
     tmp <-tmp[tmp[,1]!=0, 1:3]
     p_set <-unique(c(tmp[,1:2]))
     if (length(p_set) != 43) 
     {
-      tau_result_vec[k+1] <- NA
+      tau_result_vec[k] <- NA
       next
     }
     
@@ -228,7 +230,7 @@ gbt_eval <- function(sc_list,race_mat_test, num_vec_test, max_k)
       rank_hat  <- order( gbt_est[obs_cars], decreasing = T)
       perform_v[i] <- cor(rank_true, rank_hat, method = "kendall")
     }
-    tau_result_vec[k+1] <- mean(perform_v)
+    tau_result_vec[k] <- mean(perform_v)
   }
   return(tau_result_vec)  
 }
