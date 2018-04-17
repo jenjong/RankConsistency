@@ -9,60 +9,56 @@ require('glmnet')
 source('sim.R')
 rdata<-read.csv('racing_data.csv', header=F)
 
-max.k = 3
-file.idx = 1
-inner.iter = 10
-seed.value = 1
+max_k = 1
+file_idx = 1
+inner_iter = 1
+seed_v = 1
+tau_result_matrix <- matrix(0, inner_iter, max_k + 2)
 
-tau.result.matrix <- matrix(0, inner.iter, max.k + 2)
-
-seed.value = 1
-for ( seed.value in 1:inner.iter)
+#seed_v = 1
+for ( seed_v in 1:inner_iter)
 {
-  seed.value.i = (file.idx -1)*inner.iter + seed.value
-  set.seed(seed.value.i)
-  sc.list = vector(mode ='list', length = max.k)
-
-  sample.idx <- sort( sample(1:nrow(rdata), trunc(nrow(rdata)*0.7)))  ## 논문에 나온대로 7:3으로 뽑음. 
+  seed_v_i = (file_idx -1)*inner_iter + seed_v
+  set.seed(seed_v_i)
+  sc_list = vector(mode ='list', length = max_k)
+  sample_idx <- sort( sample(1:nrow(rdata), trunc(nrow(rdata)*0.7)))  ## 논문에 나온대로 7:3으로 뽑음. 
   
   # cross validation : 여기서 sample 다시 생성해야 함!
-  r1.mat<- as.matrix(rdata[sample.idx,18:33])   ## train set의 각 게임당 선택 차종 
-  num.vec<- rdata$V1[sample.idx]  ## 각 게임마다 참여한 유저 수 
-  n.mat <- matrix(0, 43, 43)  ## n.mat_jk : j,k 차종의 비교 수(symm mat) 
-  w.mat <- matrix(0, 43, 43)  ## w.mat_jk : j,k 차종의 승리 수 
+  race_mat <- as.matrix(rdata[sample_idx,18:33])   ## train set의 각 게임당 선택 차종 
+  num_vec<- rdata$V1[sample_idx]  ## 각 게임마다 참여한 유저 수 
+  
+  n_mat <- matrix(0, 43, 43)  ## n_mat_jk : j,k 차종의 비교 수(symm mat) 
+  w_mat <- matrix(0, 43, 43)  ## w_mat_jk : j,k 차종의 승리 수 
   i=1
-  for ( i in 1:nrow(r1.mat))  ## nrow : 게임 수 
+  for ( i in 1:nrow(race_mat))  ## nrow : 게임 수 
   {
-    n.v <- num.vec[i] ## n.v : i번째 게임의 참여 유저 수 
-    p.vec<- r1.mat[i,1:n.v] ## i번째 게임의 차종(순위대로..) 
+    n.v <- num_vec[i] ## n.v : i번째 게임의 참여 유저 수 
+    p.vec<- race_mat[i,1:n.v] ## i번째 게임의 차종(순위대로..) 
     for (j in 1:(n.v-1))
     {
       for (k in (j+1):n.v)
       {
         if (p.vec[j] == p.vec[k]) next  ## 같은 차종이 있을 경우는 제외. 
-        w.mat[ p.vec[j], p.vec[k] ] <- w.mat[ p.vec[j], p.vec[k] ] + 1
-        n.mat[ p.vec[j], p.vec[k] ] <- n.mat[ p.vec[j], p.vec[k] ] + 1
-        n.mat[ p.vec[k], p.vec[j] ] <- n.mat[ p.vec[j], p.vec[k] ]  ## n.mat은 symm matrix 
+        w_mat[ p.vec[j], p.vec[k] ] <- w_mat[ p.vec[j], p.vec[k] ] + 1
+        n_mat[ p.vec[j], p.vec[k] ] <- n_mat[ p.vec[j], p.vec[k] ] + 1
+        n_mat[ p.vec[k], p.vec[j] ] <- n_mat[ p.vec[j], p.vec[k] ]  ## n_mat은 symm matrix 
       }
     }
   }
   ##########
-  if ( min(rowSums(n.mat) ) == 0 )  ## 한 번도 경기를 한 적 없는 차종이 존재하는 경우.. 
+  if ( min(rowSums(n_mat) ) == 0 )  ## 한 번도 경기를 한 적 없는 차종이 존재하는 경우.. 
   {
-    sc.list = NULL
+    sc_list = NULL
 #    save.image(file = paste("C:/Users/uos_stat/Dropbox/A rank-consistency/prog/result/real-",
-#                            seed.value,'.rdata', sep =''))  
+#                            seed_v,'.rdata', sep =''))  
     next
   }
-  Qmat <- n.mat # n_{jk}
+  Qmat <- n_mat # n_{jk}
   n = sum(Qmat) ## total 비교 수의 2배 
   nj = colSums(Qmat)  ## 각 차종당 비교 수 
-  #Qmat <- n.mat ## 위와 같은 명령이므로 제거 
-  #Qmat.c <- Qmat/sum(Qmat)
-  Qmat.c = Qmat/n ## Qmat.c_jk = n_jk / n
-  Gmat.hat <- w.mat.r <- w.mat
-  Gmat.hat <- Gmat.hat/Qmat ## Gmat.hat_jk = j가 k를 이긴 횟수 / n_jk 
-  Gmat.hat[!is.finite(Gmat.hat)] = 0  ## j,k의 경기가 없을 경우 0으로.. 
+  
+  Gmat_hat <- w_mat/Qmat ## Gmat_hat_jk = j가 k를 이긴 횟수 / n_jk 
+  Gmat_hat[!is.finite(Gmat_hat)] = 0  ## j,k의 경기가 없을 경우 0으로.. 
   Qpmat = Qmat
   for (j in 1:nrow(Qmat)) Qpmat[j,] = Qmat[j,]/n*2  ## n은 total 비교 수의 2배이므로... 
   
@@ -95,7 +91,7 @@ for ( seed.value in 1:inner.iter)
 
     ##########################################################
     ######## naive BT fit
-    wmat = Qpmat.c1*Gmat.hat
+    wmat = Qpmat.c1*Gmat_hat
     wmat = t(wmat)
     wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  ## w_jj 제거 
     # fit glmnet
@@ -109,10 +105,9 @@ for ( seed.value in 1:inner.iter)
     
     ###############################
     # set weight-vector 
-    #cvec <- unique(sort(Qmat.c))
-    cvec <- (0:max.k)/n*2 ## cvec : threshold c vector
+    cvec <- (0:max_k)/n*2 ## cvec : threshold c vector
     
-    for ( k in 0:max.k)
+    for ( k in 0:max_k)
     {
       cat('thershold::', k, '\n')
       i1 = 1 ; i2 = 2
@@ -169,7 +164,7 @@ for ( seed.value in 1:inner.iter)
           #########################################
           ## computing gBT estimator
           #########################################  
-          wmat <- Qpmat.c2[idx3,idx3]*Gmat.hat[idx3, idx3]
+          wmat <- Qpmat.c2[idx3,idx3]*Gmat_hat[idx3, idx3]
           wmat = t(wmat)
           pp <- length(idx3)
           wvec = wmat[ - (1 + ( 0:(pp-1) ) *(pp+1))] 
@@ -206,7 +201,7 @@ for ( seed.value in 1:inner.iter)
           idx = idx + 1
         }
       }
-      sc.list[[k+1]] <- result
+      sc_list[[k+1]] <- result
     }
     
     ####################################################################################
@@ -228,30 +223,30 @@ for ( seed.value in 1:inner.iter)
 
     
     # save.image(file = paste("C:/Users/uos_stat/Dropbox/A rank-consistency/prog/result/real-",
-    #                         seed.value,'.rdata', sep =''))
+    #                         seed_v,'.rdata', sep =''))
     # 
     
     ##### end of pairwise learning ######
     
     ### make the test set #####
     ## test set의 각 게임당 선택 차종 
-    r2.mat<- as.matrix(rdata[-sample.idx,18:33])
-    num.vec<- rdata$V1[-sample.idx]
-    n.mat <- matrix(0, 43, 43)
-    w.mat <- matrix(0, 43, 43)
+    r2.mat<- as.matrix(rdata[-sample_idx,18:33])
+    num_vec<- rdata$V1[-sample_idx]
+    n_mat <- matrix(0, 43, 43)
+    w_mat <- matrix(0, 43, 43)
     i=1
     for ( i in 1:nrow(r2.mat))
     {
-      n.v <- num.vec[i]
+      n.v <- num_vec[i]
       p.vec<- r2.mat[i,1:n.v]
       for (j in 1:(n.v-1))
       {
         for (k in (j+1):n.v)
         {
           if (p.vec[j] == p.vec[k]) next
-          w.mat[ p.vec[j], p.vec[k] ] <- w.mat[ p.vec[j], p.vec[k] ] + 1
-          n.mat[ p.vec[j], p.vec[k] ] <- n.mat[ p.vec[j], p.vec[k] ] + 1
-          n.mat[ p.vec[k], p.vec[j] ] <- n.mat[ p.vec[j], p.vec[k] ]
+          w_mat[ p.vec[j], p.vec[k] ] <- w_mat[ p.vec[j], p.vec[k] ] + 1
+          n_mat[ p.vec[j], p.vec[k] ] <- n_mat[ p.vec[j], p.vec[k] ] + 1
+          n_mat[ p.vec[k], p.vec[j] ] <- n_mat[ p.vec[j], p.vec[k] ]
         }
       }
     }
@@ -259,37 +254,37 @@ for ( seed.value in 1:inner.iter)
     ######## evaluate performances of standard BT estimator ####    
     
     naive.rankest <- 44 - rank(naive.est)
-    perform1 <- rep(0, length(num.vec))
-    for (i in 1:length(num.vec))
+    perform1 <- rep(0, length(num_vec))
+    for (i in 1:length(num_vec))
     {
-      obs_cars <- r2.mat[i,][1:num.vec[i]]
+      obs_cars <- r2.mat[i,][1:num_vec[i]]
       rank_true <- 1:length(obs_cars)
       rank_hat  <- order( naive.est[obs_cars], decreasing = T)
       perform1[i] <- cor(rank_true, rank_hat, method = "kendall")
     }
-    tau.result.matrix[seed.value, 1] <- mean(perform1)
+    tau_result_matrix[seed_v, 1] <- mean(perform1)
     
     # naive.tau <- 0
     # for ( i in 1:43)
     # {
     #   for (j in 1:43)
     #   {
-    #     if ( n.mat[i,j] == 0 ) next ## 대결해본 적 없는 쌍은 제외 
-    #     naive.tau <- naive.tau - sign(naive.rankest[i] - naive.rankest[j])*w.mat[i,j]
+    #     if ( n_mat[i,j] == 0 ) next ## 대결해본 적 없는 쌍은 제외 
+    #     naive.tau <- naive.tau - sign(naive.rankest[i] - naive.rankest[j])*w_mat[i,j]
     #   }
     # }
-    #tau.result.matrix[seed.value, 1] <- naive.tau/sum(n.mat)
+    #tau_result_matrix[seed_v, 1] <- naive.tau/sum(n_mat)
 
     ######## evaluate performances of the two estimator ####    
     k = 0
-    for (k in 0:max.k)
+    for (k in 0:max_k)
     {
-      tmp<-sc.list[[k+1]]
+      tmp<-sc_list[[k+1]]
       tmp <-tmp[tmp[,1]!=0, 1:3]
       p.set <-unique(c(tmp[,1:2]))
       if (length(p.set) != 43) 
       {
-        tau.result.matrix[seed.value, k+1] <- NA
+        tau_result_matrix[seed_v, k+1] <- NA
         next
       }
       
@@ -309,34 +304,34 @@ for ( seed.value in 1:inner.iter)
       gbt.est <- c(fit$beta[,1],0)
       gbt.rankest <- 44 - rank(gbt.est)
 
-      perform2 <- rep(0, length(num.vec))
-      for (i in 1:length(num.vec))
+      perform2 <- rep(0, length(num_vec))
+      for (i in 1:length(num_vec))
       {
-        obs_cars <- r2.mat[i,][1:num.vec[i]]
+        obs_cars <- r2.mat[i,][1:num_vec[i]]
         rank_true <- 1:length(obs_cars)
         rank_hat  <- order( gbt.est[obs_cars], decreasing = T)
         perform2[i] <- cor(rank_true, rank_hat, method = "kendall")
       }
-      tau.result.matrix[seed.value, k+2] <- mean(perform2)
+      tau_result_matrix[seed_v, k+2] <- mean(perform2)
       # gbt.tau <- 0 
       # #i = 24 ; j = 3
       # for ( i in 1:43)
       # {
       #   for (j in 1:43)
       #   {
-      #     if ( n.mat[i,j] == 0 ) next
-      #     gbt.tau <- gbt.tau - sign(gbt.rankest[i] - gbt.rankest[j])*w.mat[i,j]    
+      #     if ( n_mat[i,j] == 0 ) next
+      #     gbt.tau <- gbt.tau - sign(gbt.rankest[i] - gbt.rankest[j])*w_mat[i,j]    
       #   }
       # }
-      # tau.result.matrix[seed.value, k+1] <- gbt.tau/sum(n.mat)
+      # tau_result_matrix[seed_v, k+1] <- gbt.tau/sum(n_mat)
     }
-    report.v <- colMeans(tau.result.matrix[1:seed.value,,drop = F], na.rm = T )
+    report.v <- colMeans(tau_result_matrix[1:seed_v,,drop = F], na.rm = T )
     cat('now::::\n')
     cat(round(report.v,5),'\n')
 }
 
 #####################################################################################
-a.mat <- tau.result.matrix[,1:30]
+a.mat <- tau_result_matrix[,1:30]
 a<-c()
 a.idx.vec <- c()
 i = 1
@@ -362,17 +357,17 @@ barplot(table(a.idx.vec)/200, xlab = 'thresholding level', ylab = 'percentage')
 
 t.test(a.mat[,1], a)
 
-idx <-!is.na(tau.result.matrix[,20])
+idx <-!is.na(tau_result_matrix[,20])
 
 mean(a)
 mean(a.mat[,1])
 
-boxplot(tau.result.matrix[idx,1:20])
-abline( h = median(tau.result.matrix[idx,1]))
+boxplot(tau_result_matrix[idx,1:20])
+abline( h = median(tau_result_matrix[idx,1]))
 
-#seed.value = 201
+#seed_v = 201
 #load(file = paste("C:/Users/uos_stat/Dropbox/A rank-consistency/prog/result/real-",
-#                  seed.value,'.rdata', sep =''))
+#                  seed_v,'.rdata', sep =''))
 
 
-boxplot(tau.result.matrix[,1:20])
+boxplot(tau_result_matrix[,1:20])
