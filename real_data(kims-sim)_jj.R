@@ -13,17 +13,19 @@ rdata<-read.csv('racing_data.csv', header=F)
 max_k = 15
 cvec_r <- seq(0, max_k, by = 5)
 file_idx = 1
-inner_iter = 10
+inner_iter = 200
 tau_result_matrix <- matrix(0, inner_iter, length(cvec_r)+1)
 
 seed_v = 1
 
 for ( seed_v in 1:inner_iter)
 {
+  cat("iteration::", seed_v, '\n')
   seed_v_i = (file_idx -1)*inner_iter + seed_v
   set.seed(seed_v_i)
   sc_list = vector(mode ='list', length = max_k)
-  sample_idx <- sort( sample(1:nrow(rdata), trunc(nrow(rdata)*0.8)))  ## 논문에 나온대로 7:3으로 뽑음. 
+  sample_idx <- sort( sample(1:nrow(rdata), trunc(nrow(rdata)*0.8)))  
+  ## 논문에 나온대로 7:3으로 뽑음. 
 
     # cross validation : 여기서 sample 다시 생성해야 함!
   race_mat <- as.matrix(rdata[sample_idx,18:33])   ## train set의 각 게임당 선택 차종 
@@ -93,10 +95,11 @@ for (cv_k in 1:5)
   cv_err <- rbind(cv_err, tmp)
 }
 
-  
-  
-
-
+a = tau_result_matrix  
+a1 = (1+a[1:30,1])  /( 1-a[1:30,1]  )
+a2 = (1+a[1:30,2])  /( 1-a[1:30,2]  )
+boxplot(a1,a2)
+t.test(a1,a2)
 #####################################################################################
 a.mat <- tau_result_matrix[,1:30]
 a<-c()

@@ -6,7 +6,7 @@ naive_btFunc<- function(x,y,Qpmat, Gmat_hat)
   wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  ## w_jj 제거 
   # fit glmnet
   fit <- glmnet(x, y, family = 'binomial',
-                intercept = FALSE, weights = wvec, lambda = 0, standardize = F, 
+                intercept = FALSE, weights = wvec, lambda = 0.0001, standardize = F, 
                 thresh = 1e-09)
   est = c(fit$beta[,1],0) ## lambda_43 추가 
   naive_est <- est
@@ -80,7 +80,7 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat)
   p = ncol(Qpmat)
   for ( k in 1:length(cvec))
   {
-    cat('thershold::', k-1, '\n')
+    #cat('thershold::', k-1, '\n')
     i1 = 1 ; i2 = 2
     idx = 1
     result = matrix(0, p*(p-1)/2, 4)
@@ -126,7 +126,7 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat)
                                                  mode="undirected" , weighted=NULL) ## make a graph
         i1i2_clusters = clusters(i1i2_graph)$mem ## clustering using adj matrix
         if (i1i2_clusters[i1] != i1i2_clusters[i2]){  ## i1과 i2가 다른 connected 되지 않은 경우
-          cat('   k:',k-1,', ',i1,'and',i2, 'is not connected!!\n')
+        #  cat('   k:',k-1,', ',i1,'and',i2, 'is not connected!!\n')
           idx = idx + 1
           next  
         } 
