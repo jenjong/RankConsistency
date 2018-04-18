@@ -6,7 +6,8 @@ naive_btFunc<- function(x,y,Qpmat, Gmat_hat)
   wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  ## w_jj 제거 
   # fit glmnet
   fit <- glmnet(x, y, family = 'binomial',
-                intercept = FALSE, weights = wvec, lambda = 0.0001, standardize = F, 
+                intercept = FALSE, weights = wvec, 
+                lambda = 0, standardize = F, 
                 thresh = 1e-09)
   est = c(fit$beta[,1],0) ## lambda_43 추가 
   naive_est <- est
@@ -197,6 +198,7 @@ naive_eval <- function(race_mat_test, num_vec_test, naive_est)
 gbt_eval <- function(sc_list,race_mat_test, num_vec_test, cvec)
 {
   tau_result_vec <- rep(0, length(cvec))
+  gbt_est_mat <- matrix(NA, length(cvec), 43)
   for (k in 1:length(cvec))
   {
     tmp<-sc_list[[k]]
@@ -220,8 +222,8 @@ gbt_eval <- function(sc_list,race_mat_test, num_vec_test, cvec)
     
     fit<-glmnet(x,y, family = 'binomial', lambda = 0.000001)
     gbt_est <- c(fit$beta[,1],0)
+    gbt_est_mat[k,] <- gbt_est
     gbt_rankest <- 44 - rank(gbt_est)
-    
     perform_v <- rep(0, length(num_vec_test))
     for (i in 1:length(num_vec_test))
     {
@@ -232,5 +234,5 @@ gbt_eval <- function(sc_list,race_mat_test, num_vec_test, cvec)
     }
     tau_result_vec[k] <- mean(perform_v)
   }
-  return(tau_result_vec)  
+  return(list(tau_result_vec = tau_result_vec, gbt_est_mat = gbt_est_mat))
 }
