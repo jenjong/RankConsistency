@@ -181,9 +181,11 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat)
   return( sc_list )
 }
 
-naive_eval <- function(race_mat_test, num_vec_test, naive_est)
+naive_eval <- function(race_mat_test, num_vec_test, naive_est,
+                       return_list = FALSE)
 {
   naive_rankest <- 44 - rank(naive_est)
+  perform_list = list()
   perform_v <- rep(0, length(num_vec_test))
   for (i in 1:length(num_vec_test))
   {
@@ -192,12 +194,15 @@ naive_eval <- function(race_mat_test, num_vec_test, naive_est)
     rank_hat  <- order( naive_est[obs_cars], decreasing = T)
     perform_v[i] <- cor(rank_true, rank_hat, method = "kendall")
   }
-  return(mean(perform_v))
+  if (return_list) perform_list = perform_v else perform_list = NULL
+  return(list (tau_result_vec = mean(perform_v), perform_list = perform_list))
 }
 
-gbt_eval <- function(sc_list,race_mat_test, num_vec_test, cvec)
+gbt_eval <- function(sc_list,race_mat_test, num_vec_test, cvec, 
+                     return_list = FALSE)
 {
   tau_result_vec <- rep(0, length(cvec))
+  perform_list = vector(mode = 'list', length = length(cvec))
   gbt_est_mat <- matrix(NA, length(cvec), 43)
   for (k in 1:length(cvec))
   {
@@ -225,6 +230,8 @@ gbt_eval <- function(sc_list,race_mat_test, num_vec_test, cvec)
     gbt_est_mat[k,] <- gbt_est
     gbt_rankest <- 44 - rank(gbt_est)
     perform_v <- rep(0, length(num_vec_test))
+    
+
     for (i in 1:length(num_vec_test))
     {
       obs_cars <- race_mat_test[i,][1:num_vec_test[i]]
@@ -232,7 +239,11 @@ gbt_eval <- function(sc_list,race_mat_test, num_vec_test, cvec)
       rank_hat  <- order( gbt_est[obs_cars], decreasing = T)
       perform_v[i] <- cor(rank_true, rank_hat, method = "kendall")
     }
+    if (return_list) perform_list[[k]] <-perform_v
     tau_result_vec[k] <- mean(perform_v)
   }
-  return(list(tau_result_vec = tau_result_vec, gbt_est_mat = gbt_est_mat))
+  if(!return_list) perform_list = NULL
+  return(list(tau_result_vec = tau_result_vec, 
+              gbt_est_mat = gbt_est_mat,
+              perform_list = perform_list))
 }

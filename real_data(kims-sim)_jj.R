@@ -50,11 +50,14 @@ for ( seed_v in 1:inner_iter)
   ## test set의 각 게임당 선택 차종 
   race_mat_test<- as.matrix(rdata[-sample_idx,18:33])
   num_vec_test <- rdata$V1[-sample_idx]
-  ######## evaluate performances of standard BT estimator ####    
-  tau_result_matrix[seed_v, 1] <- naive_eval(race_mat_test,num_vec_test,
-                                             naive_est)
+  ######## evaluate performances of standard BT estimator ####
+  naive_fit <- naive_eval(race_mat_test,num_vec_test,
+                             naive_est, return_list = TRUE)
+  tau_result_matrix[seed_v, 1] <- naive_fit$tau_result_vec 
+  
   ######## evaluate performances of the two estimator ####    
-  gbt_fit <- gbt_eval(sc_list, race_mat_test, num_vec_test, cvec)
+  gbt_fit <- gbt_eval(sc_list, race_mat_test, num_vec_test, cvec, 
+                      return_list = TRUE)
   result_list$gbt[[seed_v]] <- gbt_fit
   tau_result_matrix[seed_v, 2:(length(cvec)+1)]<- gbt_fit$tau_result_vec
                 
@@ -67,4 +70,17 @@ for ( seed_v in 1:inner_iter)
 # plot(44-rank(result_list$gbt[[1]]$gbt_est_mat[1,]), 
 #              44- rank(result_list$naive[[2]]))
 
+plot(naive_fit$perform_list + rnorm(1919,0,0.02), 
+     gbt_fit$perform_list[[2]] + rnorm(1919,0,0.02),
+     ylab = 'naive', xlab = 'gBT', col = "#00000010",
+     pch = 20)
 
+abline(a = 0 , b = 1)
+str(gbt_fit$perform_list[[1]])
+str(naive_fit$perform_list)
+a = naive_fit$perform_list
+b =  gbt_fit$perform_list[[1]]
+
+race_mat_test[a==-1,]
+
+race_mat_test[b==-1,]
