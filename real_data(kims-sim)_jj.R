@@ -55,7 +55,7 @@ for ( seed_v in 1:inner_iter)
   naive_fit <- naive_eval(race_mat_test,num_vec_test,
                              naive_est, return_list = FALSE)
   result_matrix_kendall[seed_v, 1] <- naive_fit$tau_result[1]
-  result_matrix_DCG[seed_v, 1] <- naive_fit$tau_result[2]
+  result_matri x_DCG[seed_v, 1] <- naive_fit$tau_result[2]
   ######## evaluate performances of the two estimator ####    
   gbt_fit <- gbt_eval(sc_list, race_mat_test, num_vec_test, cvec, 
                       return_list = FALSE)
