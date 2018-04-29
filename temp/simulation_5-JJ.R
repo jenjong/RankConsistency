@@ -16,25 +16,24 @@ kn <- 10  ## d
 rn <- 1   ## n_s
 df = 1    ## t분포 자유도 
 counter = 1
-tn = 50000 ## n (전체 rank pair의 수.)
 sim.iter = 200    ## 전체 simulation 과정 반복 수 
 source('./lib/exe-2.R')
 tn_vec = c(500,5000,50000)
 cor.naive_list = list()
 cor.r_list = list()
-
+k_fold = 5
+tn_i = 1
 for (tn_i in 1:3)
 {
-  tn = tn_vec[tn_i]  ## tn 정의 
+  tn = tn_vec[tn_i]  ## tn 정의 (전체 rank pair의 수.)
   cat ('total n:' , tn , '\n')
   cor.naive<- rep(0,sim.iter) ## BT를 이용한 kendall's tau 저장하는 벡터 
   cor.r <- matrix(0,sim.iter,max.k) ## gBT를 이용한 kendall's tau 저장하는 벡터 
-  
+  ii = 1
   for  (ii in 1:sim.iter)
   {
-    if (ii %% 10 == 0){
-      cat(' ',ii,'-th iteration\n')
-    }
+    if (ii %% 10 == 0)  cat(' ',ii,'-th iteration\n')
+    
     set.seed(ii+123) ## set seed
     
     ### generating number of comparison using dmat
@@ -71,6 +70,34 @@ for (tn_i in 1:3)
     Gmat.hat[lower.tri(Gmat.hat, diag = T)] = 0
     tmp <- Qmat - t(Gmat.hat)
     Gmat.hat[lower.tri(Qmat)]<- tmp[lower.tri(Qmat)]
+    cv_mat = matrix(0, tn, 4)
+    
+    s1 = 1
+    for (j in 1:(ncol(Gmat)-1))
+    {
+      for(i in (j+1):nrow(Gmat))
+      {
+        a1 = Qmat[i,j]
+        if (a1 == 0 ) next
+        f_idx <- s1:(s1+a1-1)
+        cv_mat[f_idx,1] <- i
+        cv_mat[f_idx,2] <- j
+        s1 = s1 + a1
+        a2 = Gmat.hat[i,j]
+        if (a2 == 0 ) next
+        f_idx2 <- sample(f_idx,a2)
+        cv_mat[f_idx,3] = 1
+      }
+    }
+    cv_mat[,4] <- sample(1:k_fold, tn, replace = TRUE)
+    cv_te = cv_mat[cv_mat[,4] == 1,]
+    cv_tr = cv_mat[cv_mat[,4] != 1,]
+    Qmat_tr = matrix(0, )
+    Gmat_tr =
+    for ()
+    
+    
+    
     Gmat.hat <- Gmat.hat/Qmat
     Gmat.hat[!is.finite(Gmat.hat)] = 0
     
