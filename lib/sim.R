@@ -319,3 +319,248 @@ cons.rank<- function(tmp)
   }
   return(sc)
 }
+
+
+## cv code 
+
+# make cv_mat
+# 
+cv_mat_fun <- function(Gmat_obs, Qmat) 
+{
+  cv_mat = matrix(0, tn, 4)  
+  s1 = 1
+  for (j in 1:(ncol(Gmat_obs)-1))
+  {
+    for(i in (j+1):nrow(Gmat_obs))
+    {
+      a1 = Qmat[i,j]
+      if (a1 == 0 ) next
+      f_idx <- s1:(s1+a1-1)
+      cv_mat[f_idx,1] <- i
+      cv_mat[f_idx,2] <- j
+      s1 = s1 + a1
+      a2 = Gmat_obs[i,j]
+      if (a2 == 0 ) next
+      f_idx2 <- sample(f_idx,a2)
+      cv_mat[f_idx2,3] = 1
+    }
+  }
+  cv_mat[,4] <- sample(1:k_fold, tn, replace = TRUE)
+  return(cv_mat)
+}
+
+cv_table_fun = function(cv_m)
+{
+  cv_m <- as.data.frame(cv_m)
+  # require(dplyr)
+  result = cv_m %>% group_by(V1, V2) %>% 
+    summarize(sum = length(V3)) %>% as.matrix()
+  
+  Qmat_tr = matrix(0, p, p)
+  for ( i in 1:nrow(result))
+  {
+    Qmat_tr[result[i, 1], result[i, 2]] <- result[i, 3]  
+  }
+  Qmat_tr <- Qmat_tr + t(Qmat_tr)
+  
+  result = cv_m %>% group_by(V1, V2) %>% 
+    summarize(sum = sum(V3)) %>% as.matrix()
+  
+  Gmat_tr = matrix(0, p, p)
+  for ( i in 1:nrow(result))
+  {
+    Gmat_tr[result[i, 1], result[i, 2]] <- result[i, 3]        
+  }
+  tmp <- Qmat_tr - t(Gmat_tr)
+  Gmat_tr[upper.tri(Qmat_tr)] <- tmp[upper.tri(Qmat_tr)]
+  return(list(Q=Qmat_tr, G=Gmat_tr))
+}
+
+
+gen_sim_fun = function(Gmat, Qmat)
+{
+  ## Gmat.hat : true Gmat을 이용하여 data generation을 할 경우에 승패 수와 전체 대결 수를 이용하여 
+  ##            만든 Gmat의 추정값 
+  gmat_prob <- c(Gmat)  ## Gmat_jk : j object와 k object에서 j가 k를 이길 확률.
+  gmat_num <- c(Qmat)
+  gmat_gen<- rep(0, length(gmat_num))
+  for (i in 1:length(gmat_num))
+  {
+    gmat_gen[i] <- rbinom(n = 1, size = gmat_num[i], prob = gmat_prob[i])
+  }
+  Gmat_obs <- matrix(gmat_gen,p,p)
+  Gmat_obs[lower.tri(Gmat_obs, diag = T)] = 0
+  tmp <- Qmat - t(Gmat_obs)
+  Gmat_obs[lower.tri(Qmat)]<- tmp[lower.tri(Qmat)]
+  return( list(G = Gmat_obs, Q = Qmat) )
+}
+
+
+naive_BT_fun = function(Qpmat.c1, Gmat.hat,p)
+{
+  wmat = Qpmat.c1*Gmat.hat  
+  wmat = t(wmat)
+  wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  
+  # fit glmnet
+  fit <- glmnet(x, y, family = 'binomial',
+                intercept = FALSE, weights = wvec, lambda = 0, 
+                standardize = F, thresh = 1e-09)
+  est = c(fit$beta[,1],0)
+  return(est)
+}
+
+
+
+gbt_step1_fun = function(Qpmat, Gmat.hat, p, cval)      
+{
+  result = matrix(0, p*(p-1)/2, 4)
+  idx = 1
+  # select a pair of items for obtaining rank consistent estimator
+  # define a matrix to save paired results
+  for ( i1 in 1:(p-1))
+  {
+    for (i2 in (i1+1):p)
+    {
+      Qpmat.c1 = Qpmat
+      # threshold step
+      idx1 <- ( Qpmat.c1[i1,] <= cval )      
+      idx2 <- ( Qpmat.c1[i2,] <= cval )  ## intersect(!idx1,!idx2)=\hat{O}_jk   
+      if (sum(idx1)>0 )  ##length->sum으로 고침 
+      {
+        Qpmat.c1[i1,idx1] <- 0 ;  Qpmat.c1[idx1,i1] <- 0
+      }
+      
+      if (sum(idx2)>0 )  ##length->sum으로 고침
+      {
+        Qpmat.c1[i2,idx2] <- 0 ;  Qpmat.c1[idx2,i2] <- 0
+      }
+      
+      Qpmat.c2 = Qpmat.c1
+      ## thresholding procedure
+      Qpmat.c2 = Qpmat.c2*(Qpmat.c2>cval)  
+      
+      nvec1 = Qpmat.c1[i1,]
+      nvec2 = Qpmat.c1[i2,]
+      idx1 = which(nvec1 == 0 | nvec2 == 0) ## !idx1 : \hat{O}_jk
+      idx2  =  setdiff( idx1, c(i1, i2))    
+      
+      # balancing the weight parameter in gBT model for the selected pair
+      nvec3 = (nvec1[-idx1]+nvec2[-idx1])/2
+      Qpmat.c2[i1,-idx1] = Qpmat.c2[i2,-idx1] = nvec3
+      
+      if (length(idx2)>0)  Qpmat.c2[i1,idx2] =  Qpmat.c2[i2,idx2] = 0
+      
+      Qpmat.c2[,i1] <- Qpmat.c2[i1,]  ## 대칭이 되도록 만들자 
+      Qpmat.c2[,i2] <- Qpmat.c2[i2,]  ## 대칭이 되도록 만들자
+      
+      ## find V_jk(maximum connected set)                
+      i1i2_adj_matrix = matrix(as.integer(Qpmat.c2>0) , p , p)  ## adjacency matrix
+      i1i2_graph = graph_from_adjacency_matrix(i1i2_adj_matrix , mode="undirected" , weighted=NULL) ## make a graph
+      i1i2_clusters = clusters(i1i2_graph)$mem ## clustering using adj matrix
+      if (i1i2_clusters[i1] != i1i2_clusters[i2])
+      {
+        ## i1과 i2가 다른 connected 되지 않은 경우
+        #cat('   k:',k,', ',i1,'and',i2, 'is not connected!!\n') 
+        idx = idx + 1
+        next  
+      } 
+      ## idx3 : edge index set of V_jk
+      idx3 = sort(which(i1i2_clusters %in% i1i2_clusters[i1])) 
+      
+      #########################################
+      ## computing gBT estimator
+      #########################################
+      wmat <- Qpmat.c2[idx3, idx3]*Gmat.hat[idx3, idx3]
+      wmat = t(wmat)
+      pp <- length(idx3)
+      wvec = wmat[ - (1 + ( 0:(pp-1) ) *(pp+1))]  ## w_jj는 제거.. 
+      xx = matrix(0, pp*(pp-1), pp)
+      yy = rep(0, pp*(pp-1) )
+      
+      ix = 1
+      for (i in 1:pp)
+      {
+        for (j in 1:pp)
+        {
+          if (i == j) next
+          jx1 = min(i,j)
+          jx2 = max(i,j)
+          xx[ix,jx1] = 1; xx[ix,jx2] = -1
+          if (i<j) yy[ix] = 1
+          ix = ix + 1
+        }
+      }
+      
+      xx = xx[,-pp]
+      
+      # note that the gBT estimator may not exist because of the thresolding
+      # use ridge
+      try.fit <- try(fit <- glmnet(xx, yy, family = 'binomial',
+                                   intercept = FALSE, weights = wvec, lambda = 1e-5, alpha = 0, standardize = F, thresh = 1e-09),
+                     silent = T)
+      
+      if (class(try.fit)[1] == 'try-error')
+      {
+        ## Q: result[idx,]에 error가 났다는 어떤 표시도 하지 않나..?? 
+        ## A: result에 (i1,i2) 대신 (0,0)을 표시.. 
+        idx = idx + 1
+        next
+      }
+      
+      
+      est = c(fit$beta[,1],0) ## lambda_pp 추가 
+      result[idx, 1:2] = c(i1, i2)
+      # compare the values of lambda_{i1} and lambda_{i2}
+      if( est[which(idx3==i1)] > est[which(idx3==i2)]) result[idx, 3] = 1
+      ## \hat{lambda_i1}>\hat{lambda_i2}면 result[idx,3]에 1을 부여..(아니면 0) 
+      
+      
+      ## calculate weight v_jk
+      
+      # 1. obtain the asymptotic variance
+      pmat = plogis(outer(est, est, FUN = '-'))
+      vmat = pmat*(1-pmat)
+      v1 = rowSums(Qpmat.c2[idx3,idx3]*vmat)
+      v1 <- v1[-pp]
+      v2 = (-Qpmat.c2[idx3,idx3]*vmat)[-pp,-pp]
+      diag(v2) <- v1
+      ## calculate asymptotic covariance matrix
+      tri.fit2 = try(inv.v2 <- solve(v2*sum(Qmat)/2))
+      if (class(tri.fit2)[1] == 'try-error'){
+        cat('   k:',k,', ',i1,'and',i2, ': cannot calaulate inverse')
+        result[idx , 4] = 4/(sum(Qpmat.c2[idx3,idx3]*sum(Qmat)/2)/2)  ## alternative v_jk 
+        idx = idx+1 ## if error -> next step
+        next
+      }
+      i1_ind = which(idx3==i1); i2_ind = which(idx3==i2)
+      if ((i1_ind<pp) & (i2_ind<pp))
+      {
+        result[idx, 4] <- inv.v2[i1_ind,i1_ind] + inv.v2[i2_ind,i2_ind] - 
+          2*inv.v2[i1_ind,i2_ind]
+      }
+      
+      if ((i1_ind==pp) | (i2_ind==pp) )
+      {
+        min_ind = min(i1_ind , i2_ind)
+        result[idx , 4] = inv.v2[min_ind , min_ind]
+      } 
+      
+      ## 2. v_jk = \sum n_ml
+      #result[idx , 4] = sum(Qpmat.c2[idx3,idx3])/2
+      
+      #cat('     inner iteration:' , idx, '\n')
+      idx = idx + 1
+      
+      #plot(c(fit$beta[,1],0), type ='b')
+      #min(-diff(est, 1))  
+      #sum(-diff(est, 1)<0)
+      #v1 = rowSums(Qpmat.c2*vmat)
+      #}
+      #}
+    }
+  }
+  return(result)  
+}
+
+
+
