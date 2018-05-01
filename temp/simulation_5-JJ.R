@@ -56,29 +56,49 @@ for (tn_i in 1:3)
     # function: gen_sim_fun, cv_mat_fun, 
     gen_fit <- gen_sim_fun(Gmat, Qmat)
     Gmat.hat_raw = gen_fit$G
-    Qmat_raw = geb_fit$Q
-    ###
-    # k-fold
-    cv_mat <-cv_mat_fun(Gmat_obs, Qmat) 
-    k_num = 1
-    # for (k_num in 1:k_fold)
-    # {
-    #    
-    # }
+    Qmat_raw = gen_fit$Q
+    cv_mat <-cv_mat_fun(gen_fit$G, gen_fit$Q) 
+    k = 1
+    for (k in 1:length(cvec))
+    {
+      ######### gBT model ###########
+      cval <- cvec[k]
+      # k-fold
+      k_num = 1
+      for (k_num in 1:k_fold)
+      {
+        tmp_te = cv_mat[cv_mat[,4] == k_num,]
+        tmp_tr = cv_mat[cv_mat[,4] != k_num,]
+        cv_m = tmp_tr[,1:3]
+        cv_table <- cv_table_fun(cv_m)
+        Gmat.hat <- cv_table$G
+        Qmat <- cv_table$Q
+        ## strat cv     
+        Gmat.hat <- Gmat.hat/Qmat
+        Gmat.hat[!is.finite(Gmat.hat)] = 0
+        n = sum(Qmat)
+        Qpmat = Qmat/n*2
+        result <- gbt_step1_fun(Qpmat, Gmat.hat, p, cval)
+        # gbt_step2_fun
+        cor.r<- gbt_step2_fun(result, p)
+        cat(cor.r,'\n')
+      }
+
+      }
+      
+      Result <- cbind(Result, result[,4])
+      Result.list[[k]] <- result
+      
+      
+      result <- gbt_step1_fun(Qpmat, Gmat.hat, p, cval)
+      Result <- cbind(Result, result[,4])
+      Result.list[[k]] <- result
+      
+    }    
+
+    cor.naive[ii] <- cor(naive.est, lambda.vec, method = 'kendall') 
     
-    tmp_te = cv_mat[cv_mat[,k_num] == k_num,]
-    tmp_tr = cv_mat[cv_mat[,k_num] != k_num,]
-    cv_m = tmp_tr[,1:3]
-    cv_table <- cv_table_fun(cv_m)
-    Gmat.hat <- cv_table$G
-    Qmat <- cv_table$Q
-    ## strat cv     
-    Gmat.hat <- Gmat.hat/Qmat
-    Gmat.hat[!is.finite(Gmat.hat)] = 0
     
-    # Generating Qpmat that consists of q_{jk}
-    n = sum(Qmat)
-    Qpmat = Qmat/n*2
     
     # define the variable to restore the simulation results
     Result = NULL
@@ -93,9 +113,6 @@ for (tn_i in 1:3)
       ######### gBT model ###########
       # set weight-vector
       cval <- cvec[k]
-      result <- gbt_step1_fun(Qpmat, Gmat.hat, p, cval)
-      Result <- cbind(Result, result[,4])
-      Result.list[[k]] <- result
     }
     cor.naive[ii] <- cor(naive.est, lambda.vec, method = 'kendall') 
 
@@ -126,7 +143,7 @@ for (tn_i in 1:3)
       xx<- xx[,-p]
       
       fit<-glmnet(xx,yy, family = 'binomial', alpha = 0, lambda = 1e-5, intercept = FALSE,
-                  weights = rep(Result[not0_ind,k],each=2) , standardize = F)
+                  weights = rep(result[not0_ind,4],each=2) , standardize = F)
       ## weight vector v_jk는 들어가지 않나?? 
       gbt.est <- c(fit$beta[,1],0)
       cor.r[ii,k] <- cor(gbt.est, lambda.vec, method = 'kendall')

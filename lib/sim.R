@@ -563,4 +563,34 @@ gbt_step1_fun = function(Qpmat, Gmat.hat, p, cval)
 }
 
 
+gbt_step2_fun = function(result, p)
+{
+  tmp<-result
+  not0_ind = (tmp[,1]!=0)
+  tmp <-tmp[not0_ind, 1:3]
+  p.set <-sort(unique(c(tmp[,1:2])))
+  
+  if (length(p.set) != p) return(NA)
+  
+  xx <- matrix(0, nrow(tmp)*2, p)
+  yy <- rep(0, nrow(tmp)*2)
+  i = 1
+  for ( i in 1:nrow(tmp))
+  {
+    vec1<-tmp[i,1:2]; vec2<- tmp[i,3]
+    xx[2*(i-1)+1, vec1] <- c(1,-1) ; yy[2*(i-1)+1] <- vec2
+    xx[2*i, vec1] <- c(-1,1) ; yy[2*i] <- abs(vec2 - 1)
+  }
+  xx<- xx[,-p]
+  
+  fit<-glmnet(xx,yy, family = 'binomial', alpha = 0, lambda = 1e-5, intercept = FALSE,
+              weights = rep(result[not0_ind, 4],each=2) , standardize = F)
+  ## weight vector v_jk는 들어가지 않나?? 
+  gbt.est <- c(fit$beta[,1],0)
+  cor.r <- cor(gbt.est, lambda.vec, method = 'kendall')  
+  
+  return(cor.r)
+}
+
+
 
