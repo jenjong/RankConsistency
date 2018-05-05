@@ -1,8 +1,6 @@
 ## description
 ## investigate the variance of the proposed estimator
 rm(list = ls()); gc()
-#setwd("E:\\rank consistency\\simulation\\code\\")
-#setwd("C:/Users/uos_stat/Dropbox/A rank-consistency/prog/temp")
 setwd("C:/Users/Jeon/Documents/GitHub/RankConsistency")
 require('glmnet')
 library(igraph)
@@ -16,23 +14,25 @@ kn <- 7  ## d
 rn <- 3   ## n_s
 df = 1    ## degree of freedom
 counter = 1
-sim.iter = 200    ## 전체 simulation 과정 반복 수 
+sim.iter = 5    ## 전체 simulation 과정 반복 수 
 source('./lib/exe-2.R') # return the object, dmat
 tn_vec = c(500,5000,50000)
 cor.naive_list = list()
 cor.r_list = list()
 k_fold = 5
-tn_i = 3
-for (tn_i in 1:3)
-{
+tn_i = 1
+
+# simulation: number of obs.
   tn = tn_vec[tn_i]  ## tn 정의 (전체 rank pair의 수.)
   cat ('total n:' , tn , '\n')
   cor.naive<- rep(0,sim.iter) ## BT를 이용한 kendall's tau 저장하는 벡터 
-  cor.r <- matrix(0,sim.iter,max.k) ## gBT를 이용한 kendall's tau 저장하는 벡터 
+  cor.r <- matrix(0,sim.iter,max.k)
+  cor.cv <- matrix(0,sim.iter,max.k)
+  cor.cv.list = vector(mode = 'list', length = sim.iter)
   ii = 1
   for  (ii in 1:sim.iter)
   {
-    if (ii %% 10 == 0)  cat(' ',ii,'-th iteration\n')
+    cat(' ',ii,'-th iteration\n')
     set.seed(ii+123) ## set seed
     ### generating number of comparison using dmat
     Qmat = sparse_gen_fun(dmat, kn, rn, tn)
@@ -44,12 +44,14 @@ for (tn_i in 1:3)
     Qmat_raw = gen_fit$Q
     cv_mat = cv_mat_fun(gen_fit$G, gen_fit$Q) 
     k = 1
+    cor.cv.list.mat = matrix(NA, k_fold, length(cvec))
     for (k in 1:length(cvec))
     {
       ######### gBT model ###########
       cval <- cvec[k]
       # k-fold
       k_num = 1
+      
       for (k_num in 1:k_fold)
       {
         tmp_te = cv_mat[cv_mat[,"partition"] == k_num,-4]
@@ -66,15 +68,27 @@ for (tn_i in 1:3)
         # gbt_step2_fun
         cv_table <- cv_table_fun(tmp_te)
         gbt_fit<- gbt_step2_fun(result, p, lambda.vec, cv_table)
-        
-        cat(cor.r,'\n')
+        cor.cv.list.mat[k_num, k] <- gbt_fit$tes_cor
       }
-
-      }
-      
-      Result <- cbind(Result, result[,4])
-      Result.list[[k]] <- result
-      
+    }
+    cor.cv.list[[ii]] = cor.cv.list.mat  
+    tmp = colMeans(cor.cv.list.mat, na.rm = TRUE)
+    cor.cv[ii,] 
+    
+    min_idx <-which.min(tmp)
+    cval <-  cvec[min_idx]
+    cv_table <- cv_table_fun(cv_mat)
+    Gmat.hat <- cv_table$G
+    Qmat <- cv_table$Q
+    Gmat.hat <- Gmat.hat/Qmat
+    Gmat.hat[!is.finite(Gmat.hat)] = 0
+    n = sum(Qmat)
+    Qpmat = Qmat/n*2
+    result <- gbt_step1_fun(Qpmat, Gmat.hat, p, cval)
+    gbt_fit<- gbt_step2_fun(result, p, lambda.vec)
+    gbt_fit$cor
+    
+  } 
       
       result <- gbt_step1_fun(Qpmat, Gmat.hat, p, cval)
       Result <- cbind(Result, result[,4])
