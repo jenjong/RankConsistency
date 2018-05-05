@@ -346,6 +346,7 @@ cv_mat_fun <- function(Gmat_obs, Qmat)
     }
   }
   cv_mat[,4] <- sample(1:k_fold, tn, replace = TRUE)
+  colnames(cv_mat) = c("j", "k", "y_jk", "partition")
   return(cv_mat)
 }
 
@@ -353,8 +354,8 @@ cv_table_fun = function(cv_m)
 {
   cv_m <- as.data.frame(cv_m)
   # require(dplyr)
-  result = cv_m %>% group_by(V1, V2) %>% 
-    summarize(sum = length(V3)) %>% as.matrix()
+  result = cv_m %>% group_by(j, k) %>% 
+    summarize(sum = length(y_jk)) %>% as.matrix()
   
   Qmat_tr = matrix(0, p, p)
   for ( i in 1:nrow(result))
@@ -363,8 +364,8 @@ cv_table_fun = function(cv_m)
   }
   Qmat_tr <- Qmat_tr + t(Qmat_tr)
   
-  result = cv_m %>% group_by(V1, V2) %>% 
-    summarize(sum = sum(V3)) %>% as.matrix()
+  result = cv_m %>% group_by(j, k) %>% 
+    summarize(sum = sum(y_jk)) %>% as.matrix()
   
   Gmat_tr = matrix(0, p, p)
   for ( i in 1:nrow(result))
@@ -563,7 +564,7 @@ gbt_step1_fun = function(Qpmat, Gmat.hat, p, cval)
 }
 
 
-gbt_step2_fun = function(result, p)
+gbt_step2_fun = function(result, p, lambda.vec, newdata = NULL)
 {
   tmp<-result
   not0_ind = (tmp[,1]!=0)
@@ -583,14 +584,46 @@ gbt_step2_fun = function(result, p)
   }
   xx<- xx[,-p]
   
-  fit<-glmnet(xx,yy, family = 'binomial', alpha = 0, lambda = 1e-5, intercept = FALSE,
+  fit<-glmnet(xx,yy, family = 'binomial', alpha = 0, lambda = 1e-5, 
+              intercept = FALSE,
               weights = rep(result[not0_ind, 4],each=2) , standardize = F)
   ## weight vector v_jk는 들어가지 않나?? 
   gbt.est <- c(fit$beta[,1],0)
   cor.r <- cor(gbt.est, lambda.vec, method = 'kendall')  
-  
-  return(cor.r)
+  if (is.null(newdata))
+  {
+    test_cor = NA
+  } else {
+    tmp = matrix(0,p,p)
+    Q = cv_table$Q
+    G = cv_table$G
+    for (i in 1:p)
+    {
+      for (j in 1:p)
+      {
+        if (i == j) next
+        tmp[i,j] = as.integer( gbt.est[i]-gbt.est[j] > 0 )
+      }
+    }
+    test_cor = sum(tmp*G)/(sum(Q)/2)
+  }
+  return(list(cor = cor.r, test_cor = test_cor))
 }
 
 
 
+sparse_gen_fun <- function(dmat, kn, rn, tn)
+{
+  dmat1 <- dmat ## dmat : {q_jk} matrix
+  u.idx <- which( dmat > 0) ## q_jk가 0보다 큰 index 
+  sel.u.idx<- sample(u.idx, kn) ## d개를 sampling함. 
+  dmat1[sel.u.idx]  <- 0  ## d개의 선택된 q_jk에는 0을 대입(어차피 해당 n_jk은 n_s로 고정할 것이므로) 
+  dmat1 <- dmat1/sum(dmat1) ## dmat1을 prob distribution으로 만들어주기 위해 normalize. 
+  d.sample <- drop (rmultinom(1, tn-rn*kn, prob = c(dmat1)))  ## n_jk 만들기 
+  d.sample[sel.u.idx] <- rn ## d개의 선택된 n_jk에 n_s를 대입 
+  dmat1 <- matrix(d.sample, p , p)  ## matrix 형태로 만들어줌. 
+  Qmat <- matrix(0, p, p )
+  for (j in 1:p) Qmat[,j] <- rev(dmat1[j,])
+  Qmat <- Qmat + t(Qmat)  ## Qmat : 최종적인 n_jk matrix 
+  return(Qmat)
+}

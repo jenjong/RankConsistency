@@ -9,16 +9,15 @@ library(igraph)
 library(ggplot2)
 library(dplyr)
 source('./lib/sim.R')
-
-##########################################################################################
+################################################################################
 max.k = 10
 p = 10
 kn <- 7  ## d
 rn <- 3   ## n_s
-df = 1    ## t분포 자유도 
+df = 1    ## degree of freedom
 counter = 1
 sim.iter = 200    ## 전체 simulation 과정 반복 수 
-source('./lib/exe-2.R')
+source('./lib/exe-2.R') # return the object, dmat
 tn_vec = c(500,5000,50000)
 cor.naive_list = list()
 cor.r_list = list()
@@ -35,29 +34,15 @@ for (tn_i in 1:3)
   {
     if (ii %% 10 == 0)  cat(' ',ii,'-th iteration\n')
     set.seed(ii+123) ## set seed
-    
     ### generating number of comparison using dmat
-    ### output: Qmat (n_jk matrix)
-    dmat1 <- dmat ## dmat : {q_jk} matrix
-    u.idx <- which( dmat > 0) ## q_jk가 0보다 큰 index 
-    sel.u.idx<- sample(u.idx, kn) ## d개를 sampling함. 
-    dmat1[sel.u.idx]  <- 0  ## d개의 선택된 q_jk에는 0을 대입(어차피 해당 n_jk은 n_s로 고정할 것이므로) 
-    dmat1 <- dmat1/sum(dmat1) ## dmat1을 prob distribution으로 만들어주기 위해 normalize. 
-    d.sample <- drop (rmultinom(1, tn-rn*kn, prob = c(dmat1)))  ## n_jk 만들기 
-    d.sample[sel.u.idx] <- rn ## d개의 선택된 n_jk에 n_s를 대입 
-    dmat1 <- matrix(d.sample, p , p)  ## matrix 형태로 만들어줌. 
-    Qmat <- matrix(0, p, p )
-    for (j in 1:p) Qmat[,j] <- rev(dmat1[j,])
-    Qmat <- Qmat + t(Qmat)  ## Qmat : 최종적인 n_jk matrix 
-    cvec<-(0:(max.k-1))/tn  ## cvec : threshold c들이 모여있는 벡터 
-    
-    
+    Qmat = sparse_gen_fun(dmat, kn, rn, tn)
+    cvec<-(0:(max.k-1))/tn  ## cvec : threshold cval
     ##############################
     # function: gen_sim_fun, cv_mat_fun, 
-    gen_fit <- gen_sim_fun(Gmat, Qmat)
+    gen_fit = gen_sim_fun(Gmat, Qmat)
     Gmat.hat_raw = gen_fit$G
     Qmat_raw = gen_fit$Q
-    cv_mat <-cv_mat_fun(gen_fit$G, gen_fit$Q) 
+    cv_mat = cv_mat_fun(gen_fit$G, gen_fit$Q) 
     k = 1
     for (k in 1:length(cvec))
     {
@@ -67,10 +52,9 @@ for (tn_i in 1:3)
       k_num = 1
       for (k_num in 1:k_fold)
       {
-        tmp_te = cv_mat[cv_mat[,4] == k_num,]
-        tmp_tr = cv_mat[cv_mat[,4] != k_num,]
-        cv_m = tmp_tr[,1:3]
-        cv_table <- cv_table_fun(cv_m)
+        tmp_te = cv_mat[cv_mat[,"partition"] == k_num,-4]
+        tmp_tr = cv_mat[cv_mat[,"partition"] != k_num,-4]
+        cv_table <- cv_table_fun(tmp_tr)
         Gmat.hat <- cv_table$G
         Qmat <- cv_table$Q
         ## strat cv     
@@ -80,7 +64,9 @@ for (tn_i in 1:3)
         Qpmat = Qmat/n*2
         result <- gbt_step1_fun(Qpmat, Gmat.hat, p, cval)
         # gbt_step2_fun
-        cor.r<- gbt_step2_fun(result, p)
+        cv_table <- cv_table_fun(tmp_te)
+        gbt_fit<- gbt_step2_fun(result, p, lambda.vec, cv_table)
+        
         cat(cor.r,'\n')
       }
 

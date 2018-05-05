@@ -20,7 +20,6 @@ x = x[,-p]
 
 ###############################  
 # Gmat : population version 
-#lambda.vec = seq(4,0,length = p)
 lambda.vec = seq(10,0,length = p)
 #lambda.vec= qt(seq(0.9, 0.5, length = p), df = 1)
 Gmat = pt( outer(lambda.vec, lambda.vec, FUN = '-'), df = df)
@@ -49,8 +48,6 @@ if (counter == 3)
   alpha.vec3 = c(3, 6, 1)
 }
 
-
-
 pi.var1 = 1/3
 pi.var2 = 1/3
 pi.var3 = 1/3
@@ -67,5 +64,4 @@ for (i in 1:length(z))
       (1-pi.var1-pi.var2)*ddirichlet(xvar,alpha.vec3) 
   }
 }
-#dmat <- dmat^gamma.r
 dmat <- dmat/sum(dmat)
