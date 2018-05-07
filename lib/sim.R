@@ -325,7 +325,7 @@ cons.rank<- function(tmp)
 
 # make cv_mat
 # 
-cv_mat_fun <- function(Gmat_obs, Qmat) 
+cv_mat_fun <- function(Gmat_obs, Qmat, k_fold) 
 {
   cv_mat = matrix(0, tn, 4)  
   s1 = 1
@@ -397,9 +397,16 @@ gen_sim_fun = function(Gmat, Qmat)
 }
 
 
-naive_BT_fun = function(Qpmat.c1, Gmat.hat,p)
-{
-  wmat = Qpmat.c1*Gmat.hat  
+bt_fun = function(gen_fit, lambda.vec = NULL)
+{ 
+  Gmat.hat <- gen_fit$G
+  Qmat <- gen_fit$Q
+  p = ncol(Qmat)
+  Gmat.hat <- Gmat.hat/Qmat
+  Gmat.hat[!is.finite(Gmat.hat)] = 0
+  n = sum(Qmat)
+  Qpmat = Qmat/n*2
+  wmat = Qpmat*Gmat.hat  
   wmat = t(wmat)
   wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  
   # fit glmnet
@@ -407,7 +414,10 @@ naive_BT_fun = function(Qpmat.c1, Gmat.hat,p)
                 intercept = FALSE, weights = wvec, lambda = 0, 
                 standardize = F, thresh = 1e-09)
   est = c(fit$beta[,1],0)
-  return(est)
+  if (is.null(lambda.vec)) cor.r = NULL else cor.r = cor(est, lambda.vec, method = 'kendall')    
+  return( list (coefficients = est,
+                cor = cor.r) )
+  
 }
 
 
@@ -497,8 +507,9 @@ gbt_step1_fun = function(Qpmat, Gmat.hat, p, cval)
       # note that the gBT estimator may not exist because of the thresolding
       # use ridge
       try.fit <- try(fit <- glmnet(xx, yy, family = 'binomial',
-                                   intercept = FALSE, weights = wvec, lambda = 1e-5, alpha = 0, standardize = F, thresh = 1e-09),
-                     silent = T)
+                                   intercept = FALSE, weights = wvec, 
+                                   lambda = 1e-5, alpha = 0, standardize = F, 
+                                   thresh = 1e-09), silent = T)
       
       if (class(try.fit)[1] == 'try-error')
       {
@@ -563,7 +574,7 @@ gbt_step1_fun = function(Qpmat, Gmat.hat, p, cval)
   return(result)  
 }
 
-
+# note that gbt_step2_fun has two types of returns: 
 gbt_step2_fun = function(result, p, lambda.vec, newdata = NULL)
 {
   tmp<-result
@@ -571,7 +582,11 @@ gbt_step2_fun = function(result, p, lambda.vec, newdata = NULL)
   tmp <-tmp[not0_ind, 1:3]
   p.set <-sort(unique(c(tmp[,1:2])))
   
-  if (length(p.set) != p) return(NA)
+  if (length(p.set) != p) 
+  {
+    return(list(gbt_est = rep(NA,p),
+                cor = NA, test_cor = NA))
+  }
   
   xx <- matrix(0, nrow(tmp)*2, p)
   yy <- rep(0, nrow(tmp)*2)
@@ -584,19 +599,27 @@ gbt_step2_fun = function(result, p, lambda.vec, newdata = NULL)
   }
   xx<- xx[,-p]
   
+  ## See fit: Note that weights denotes v_jk 
   fit<-glmnet(xx,yy, family = 'binomial', alpha = 0, lambda = 1e-5, 
               intercept = FALSE,
               weights = rep(result[not0_ind, 4],each=2) , standardize = F)
-  ## weight vector v_jk는 들어가지 않나?? 
+  
   gbt.est <- c(fit$beta[,1],0)
-  cor.r <- cor(gbt.est, lambda.vec, method = 'kendall')  
+  
+  if (is.null(lambda.vec)) 
+  {
+    cor.r = NA
+  } else {
+    cor.r <- cor(gbt.est, lambda.vec, method = 'kendall')    
+  }
+  
   if (is.null(newdata))
   {
     test_cor = NA
   } else {
     tmp = matrix(0,p,p)
-    Q = cv_table$Q
-    G = cv_table$G
+    Q = newdata$Q
+    G = newdata$G
     for (i in 1:p)
     {
       for (j in 1:p)
@@ -607,7 +630,8 @@ gbt_step2_fun = function(result, p, lambda.vec, newdata = NULL)
     }
     test_cor = sum(tmp*G)/(sum(Q)/2)
   }
-  return(list(cor = cor.r, test_cor = test_cor))
+  return(list(gbt_est = gbt.est,
+      cor = cor.r, test_cor = test_cor))
 }
 
 
@@ -626,4 +650,58 @@ sparse_gen_fun <- function(dmat, kn, rn, tn)
   for (j in 1:p) Qmat[,j] <- rev(dmat1[j,])
   Qmat <- Qmat + t(Qmat)  ## Qmat : 최종적인 n_jk matrix 
   return(Qmat)
+}
+
+
+cv.gbt_fun  = function(gen_fit, cvec, k_fold, lambda.vec)
+{
+  fit = gen_fit
+  p = ncol(fit$Q)
+  cv_mat = cv_mat_fun(fit$G, fit$Q, k_fold) 
+  cor_mat = matrix(NA, k_fold, length(cvec))
+  for (k in 1:length(cvec))
+  {
+    ######### gBT model ###########
+    cval <- cvec[k]
+    # k-fold
+    for (k_num in 1:k_fold)
+    {
+      result = NULL
+      tmp_te = cv_mat[cv_mat[,"partition"] == k_num,-4]
+      tmp_tr = cv_mat[cv_mat[,"partition"] != k_num,-4]
+      cv_table <- cv_table_fun(tmp_tr)
+      Qmat <- cv_table$Q
+      Gmat.hat <- cv_table$G
+      Gmat.hat = Gmat.hat/Qmat
+      Gmat.hat[!is.finite(Gmat.hat)] = 0
+      n = sum(Qmat)
+      Qpmat = Qmat/n*2
+      result <- gbt_step1_fun(Qpmat, Gmat.hat, p, cval)
+      # gbt_step2_fun
+      cv_table <- cv_table_fun(tmp_te)
+      gbt_fit <- gbt_step2_fun(result, p, lambda.vec, cv_table)
+#      cat ("k:", k, "  k_num:", k_num,"  ", gbt_fit$test_cor,'\n')
+      if (any(is.na(gbt_fit))) next 
+      cor_mat[k_num, k] <- gbt_fit$test_cor
+    }
+  }
+  return(cor_mat)
+}
+
+
+gbt_fun = function(gen_fit, cval, lambda.vec)
+{
+  Gmat.hat <- gen_fit$G
+  Qmat <- gen_fit$Q
+  p = ncol(Qmat)
+  Gmat.hat <- Gmat.hat/Qmat
+  Gmat.hat[!is.finite(Gmat.hat)] = 0
+  n = sum(Qmat)
+  Qpmat = Qmat/n*2
+  result <- gbt_step1_fun(Qpmat, Gmat.hat, p, cval)
+  gbt_fit<- gbt_step2_fun(result, p, lambda.vec) 
+  gbt_est = gbt_fit$gbt_est
+  cor = gbt_fit$cor
+  return( list (coefficients = gbt_est,
+                cor = cor) )
 }
