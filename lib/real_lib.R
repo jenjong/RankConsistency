@@ -6,8 +6,8 @@ naive_btFunc<- function(x,y,Qpmat, Gmat_hat)
   wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  ## w_jj 제거 
   # fit glmnet
   fit <- glmnet(x, y, family = 'binomial',
-                intercept = FALSE, weights = wvec, 
-                lambda = 0, standardize = F, 
+                intercept = FALSE, weights = wvec, lambda = 0,
+                standardize = F, 
                 thresh = 1e-09)
   est = c(fit$beta[,1],0) ## lambda_43 추가 
   naive_est <- est
@@ -71,7 +71,8 @@ QmatFunc <- function(race_mat, num_vec)
   x = x[,-p]
   #############################################
   return( list(x=x, y=y, Qpmat=Qpmat, Gmat_hat=Gmat_hat, 
-               n = n, sc_alarm = sc_alarm) )
+               n = n, sc_alarm = sc_alarm, Qmat = Qmat,
+               Wmat = w_mat) )
 }
 
 
@@ -181,23 +182,70 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat)
   return( sc_list )
 }
 
-#rank_v<- c(1,2,4,3)
+#rank_v<- c(1,2,4,3,6,5)
 dcgFun <- function(rank_v)
 {
   pp = length(rank_v)
   v = 0
-  p_i = c(1,-diff(1/log(1:pp+1),lag=1))
-  p_tmp = 1:pp- (1:pp)[rank_v]
-  p_ib = -(p_i - p_i[rank_v]) /p_tmp
+  d_i = c(1,-diff(1/log(1:pp+1),lag=1))
+  #d_i = rep(1,pp)
+  #if (pp>5) d_i[(1:5)] = 0
+  p_i = cumsum(d_i)
+  #p_i = 1/log(2) + 1
+  p_tmp = 1:pp - (1:pp)[rank_v]
+  p_ib = abs(p_i - p_i[rank_v]) /abs(p_tmp)
   p_ib[is.nan(p_ib)] = 1
   for(i in 1:(pp-1))
   {
-    for (j in 2:pp)
+    for (j in (i+1):pp)
     {
-      v <- v + p_ib[i]*p_ib[j]*as.integer(rank_v[i]>rank_v[j])
+      v <- v + p_ib[i]*p_ib[j]*as.integer(rank_v[i] > rank_v[j])
     }
   }
   return(v)
+}
+
+
+
+
+balFun = function(obs_cars, bt_est, Qpmat)
+{
+  pp = length(obs_cars)
+  est_coef = bt_est[obs_cars]
+  v = 0
+  i.num = 0
+  for(i in 1:(pp-1))
+  {
+    for (j in (i+1):pp)
+    {
+      if (est_coef[i] == est_coef[j]) next
+      bal.var = 1/Qpmat[obs_cars[i], obs_cars[j]]
+      v = v + bal.var*as.integer(est_coef[i] < est_coef[j])
+      i.num = i.num + 1
+    }
+  }
+  return (v)
+}
+
+
+
+kenFun = function(obs_cars, bt_est)
+{
+  pp = length(obs_cars)
+  est_coef = bt_est[obs_cars]
+  v = 0
+  i.num = 0
+  for(i in 1:(pp-1))
+  {
+    for (j in (i+1):pp)
+    {
+      if (est_coef[i] == est_coef[j]) next
+      if (obs_cars[i] == 35 | obs_cars[j] == 35) next
+      v = v + as.integer(est_coef[i] < est_coef[j])
+      i.num = i.num + 1
+    }
+  }
+  if (i.num > 0) return (v/i.num) else return(0)
 }
 
 

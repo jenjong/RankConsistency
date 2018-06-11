@@ -1,6 +1,7 @@
 ##### evaluation function 
 rm(list = ls())
-setwd("C:/Users/uos_stat/Documents/GitHub/RankConsistency")
+setwd("C:/Users/jeon/Documents/GitHub/RankConsistency")
+load("real_0421-sc.Rdata")
 load("real_0421.Rdata")
 source('./lib/real_lib.R')
 
@@ -50,6 +51,7 @@ file_idx = 1
 for (file_idx in 1:20)
 {
   load( paste0('./result/real_data/real_cv_result_',file_idx,'.Rdata') )
+  ii = 1
   for (ii in 1:inner_iter)
   {
     cv_fit <- cv_list[[ii]]
@@ -60,20 +62,27 @@ for (file_idx in 1:20)
       which.min(colMeans(cv_fit$cv_err_kendall, na.rm = T))
   }
 }
+#write.csv(min_vec_kendall,"min_vec_kendall.csv")
 # DCG
 aa = c()
 for ( i in 1:nrow(result_matrix_DCG))
   aa[i] = result_matrix_DCG[i, min_vec_DCG[i]+1]
+result_matrix_DCG
 
-boxplot(result_matrix_DCG[,1], aa, names = c("BT", "gBT"), 
-        ylab = "weighted rank distance", col='lightblue')
+
+boxplot(result_matrix_DCG[,1], 
+        result_matrix_DCG_sc[,3],
+        aa, names = c("BT", "SC", "gBT"), 
+        ylab = "generalized rank distance", col='lightblue')
 
 t.test(result_matrix_DCG[,1]-aa)
 aa = c()
 for ( i in 1:nrow(result_matrix_kendall))
   aa[i] = result_matrix_kendall[i, min_vec_kendall[i]+1]
 
-boxplot(result_matrix_kendall[,1], aa)
+boxplot(result_matrix_kendall[,1], result_matrix_kendall_sc[,3], aa,
+        names = c("BT", "SC", "gBT"), 
+        ylab = "Kendall's distance", col='lightblue')
 
 
 

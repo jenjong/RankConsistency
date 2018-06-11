@@ -575,7 +575,8 @@ gbt_step1_fun = function(Qpmat, Gmat.hat, p, cval)
 }
 
 # note that gbt_step2_fun has two types of returns: 
-gbt_step2_fun = function(result, p, lambda.vec, newdata = NULL)
+gbt_step2_fun = function(result, p, lambda.vec, newdata = NULL,
+                         weight = TRUE)
 {
   tmp<-result
   not0_ind = (tmp[,1]!=0)
@@ -600,9 +601,11 @@ gbt_step2_fun = function(result, p, lambda.vec, newdata = NULL)
   xx<- xx[,-p]
   
   ## See fit: Note that weights denotes v_jk 
+  v_weight = rep(result[not0_ind, 4],each=2)
+  if (weight == FALSE) v_weight = rep(1, length(v_weight))
   fit<-glmnet(xx,yy, family = 'binomial', alpha = 0, lambda = 1e-5, 
               intercept = FALSE,
-              weights = rep(result[not0_ind, 4],each=2) , standardize = F)
+              weights = v_weight , standardize = F)
   
   gbt.est <- c(fit$beta[,1],0)
   
@@ -636,20 +639,43 @@ gbt_step2_fun = function(result, p, lambda.vec, newdata = NULL)
 
 
 
-sparse_gen_fun <- function(dmat, kn, rn, tn)
+sparse_gen_fun <- function(dmat, kn, rn, tn, random = TRUE)
 {
-  dmat1 <- dmat ## dmat : {q_jk} matrix
-  u.idx <- which( dmat > 0) ## q_jk가 0보다 큰 index 
-  sel.u.idx<- sample(u.idx, kn) ## d개를 sampling함. 
-  dmat1[sel.u.idx]  <- 0  ## d개의 선택된 q_jk에는 0을 대입(어차피 해당 n_jk은 n_s로 고정할 것이므로) 
-  dmat1 <- dmat1/sum(dmat1) ## dmat1을 prob distribution으로 만들어주기 위해 normalize. 
-  d.sample <- drop (rmultinom(1, tn-rn*kn, prob = c(dmat1)))  ## n_jk 만들기 
-  d.sample[sel.u.idx] <- rn ## d개의 선택된 n_jk에 n_s를 대입 
-  dmat1 <- matrix(d.sample, p , p)  ## matrix 형태로 만들어줌. 
-  Qmat <- matrix(0, p, p )
-  for (j in 1:p) Qmat[,j] <- rev(dmat1[j,])
-  Qmat <- Qmat + t(Qmat)  ## Qmat : 최종적인 n_jk matrix 
-  return(Qmat)
+  if (random == TRUE)
+  {
+    dmat1 <- dmat ## dmat : {q_jk} matrix
+    u.idx <- which( dmat > 0) 
+    sel.u.idx<- sample(u.idx, kn) 
+    dmat1[sel.u.idx]  <- 0  
+    dmat1 <- dmat1/sum(dmat1) 
+    d.sample <- drop (rmultinom(1, tn-rn*kn, prob = c(dmat1)))  ## n_jk
+    d.sample[sel.u.idx] <- rn 
+    dmat1 <- matrix(d.sample, p , p)  
+    Qmat <- matrix(0, p, p )
+    for (j in 1:p) Qmat[,j] <- rev(dmat1[j,])
+    Qmat <- Qmat + t(Qmat)  
+    return(Qmat)
+  }
+  
+  if (random == FALSE)
+  {
+    dmat1 <- dmat ## dmat : {q_jk} matrix
+    for (j in 1:p) dmat1[,j] <- rev(dmat[j,])
+    #dmat1 <- dmat1 + t(dmat1)
+    
+    u.idx <- which( dmat1>0) 
+    sel.u.idx<- sample(u.idx, kn) 
+    dmat1[sel.u.idx]  <- 0  
+    dmat1 <- dmat1/sum(dmat1) 
+    d.sample <- drop (rmultinom(1, tn-rn*kn, prob = c(dmat1)))  
+    d.sample[sel.u.idx] <- rn 
+    dmat1 <- matrix(d.sample, p , p)  
+    Qmat <- matrix(0, p, p )
+    for (j in 1:p) Qmat[,j] <- rev(dmat1[j,])
+    Qmat <- Qmat + t(Qmat)  ## Qmat : 최종적인 n_jk matrix 
+    return(Qmat)    
+  }
+  
 }
 
 

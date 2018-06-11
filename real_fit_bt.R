@@ -18,7 +18,7 @@ inner_iter = 500
 seed_v = 1
 result_matrix_kendall = matrix(0,inner_iter, length(cvec_r)+1)
 result_matrix_DCG = matrix(0,inner_iter, length(cvec_r)+1)
-  
+
 result_list = list()
 result_list$naive = vector(mode = 'list', length = inner_iter)
 result_list$gbt = vector(mode = 'list', length = inner_iter)
@@ -45,7 +45,7 @@ for ( seed_v in 1:inner_iter)
   cvec <- cvec_r/n*2 ## cvec : threshold c vector
   
   sc_list <- sc_listFun(cvec, Qpmat, Gmat_hat)
-
+  
   ### make the test set #####
   race_mat_test<- as.matrix(rdata[-sample_idx,18:33])
   num_vec_test <- rdata$V1[-sample_idx]
@@ -53,7 +53,7 @@ for ( seed_v in 1:inner_iter)
   
   ######## evaluate performances of standard BT estimator ####
   naive_fit <- naive_eval(race_mat_test,num_vec_test,
-                             naive_est, return_list = FALSE)
+                          naive_est, return_list = FALSE)
   result_matrix_kendall[seed_v, 1] <- naive_fit$tau_result[1]
   result_matrix_DCG[seed_v, 1] <- naive_fit$tau_result[2]
   ######## evaluate performances of the two estimator ####    
@@ -62,11 +62,11 @@ for ( seed_v in 1:inner_iter)
   result_list$gbt[[seed_v]] <- gbt_fit
   result_matrix_kendall[seed_v, 2:(length(cvec)+1)]<- gbt_fit$tau_result_vec[1,]
   result_matrix_DCG[seed_v, 2:(length(cvec)+1)]<- gbt_fit$tau_result_vec[2,]
-                
+  
   report_v <- colMeans(result_matrix_DCG[1:seed_v,,drop = F], na.rm = T )
   cat('now::::\n')
   cat(round(report_v,5),'\n')
 }
-#save.image("real_0421.rdata")
+#save.image("real_0421_bt.rdata")
 list.files()
 

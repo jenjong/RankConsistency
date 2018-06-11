@@ -1,6 +1,6 @@
 ##### evaluation function 
 rm(list = ls())
-setwd("C:/Users/uos_stat/Documents/GitHub/RankConsistency")
+setwd("C:/Users/jeon/Documents/GitHub/RankConsistency")
 load("real_0421.Rdata")
 source('./lib/real_lib.R')
 
@@ -8,6 +8,7 @@ file_idx = 1
 seed_v = 1
 a11 = c()
 a22 = c()
+v1 = v2 = c()
  for (seed_v in 1:inner_iter)
  {
    cat("iteration::", seed_v, '\n')
@@ -37,15 +38,22 @@ a22 = c()
      esttmp2 = rank(gbt_fit$gbt_est_mat[1,tmp1])[k]
      a2[j] = round(esttmp2)
    }
+   v1 = c(v1,a1)
+   v2 = c(v2,a2)
    a11[seed_v] = mean(a1, na.rm = T)
    a22[seed_v] = mean(a2, na.rm = T)
  }   
+
 boxplot(a11,a22)
-mean(a22)
-
-
-   barplot(round(a1))
-   barplot(round(a2))
+mean(a11)
+sd(v1)
+sd(v2)
+v11 = table(v1)
+v22 = table(v2)
+barplot(v11/sum(v11)-v22/sum(v22))
+barplot(v22/sum(v22))
+ barplot(round(a1))
+ barplot(round(a2))
    
 #   ######## evaluate performances of standard BT estimator ####
 #   naive_fit <- naive_eval(race_mat_test,num_vec_test,
