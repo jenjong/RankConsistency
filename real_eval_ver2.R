@@ -9,8 +9,9 @@
 
 rm(list = ls())
 gc()
-setwd("C:/Users/jeon/Documents/GitHub/RankConsistency")
-load("real_0421-sc.Rdata")
+if (Sys.info()[1] == "Linux" ) setwd("/home/jeon/Documents/Github/RankConsistency")
+if (Sys.info()[1] == "Windows" ) setwd("C:/Users/jeon/Documents/GitHub/RankConsistency")
+load("real_0421-sc.rdata")
 result_list_sc = result_list
 load("real_0421.rdata")
 
