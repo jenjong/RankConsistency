@@ -161,7 +161,7 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat)
         
         try.fit <- try(fit <- glmnet(xx, yy, family = 'binomial',
                                      intercept = FALSE, weights = wvec, 
-                                     lambda = 0.0001, alpha = 0, standardize = F,
+                                     lambda = 1e-8, alpha = 0, standardize = F,
                                      thresh = 1e-09),
                        silent = T)
         if (class(try.fit)[1] == 'try-error')  
@@ -240,7 +240,6 @@ kenFun = function(obs_cars, bt_est)
     for (j in (i+1):pp)
     {
       if (est_coef[i] == est_coef[j]) next
-      if (obs_cars[i] == 35 | obs_cars[j] == 35) next
       v = v + as.integer(est_coef[i] < est_coef[j])
       i.num = i.num + 1
     }
