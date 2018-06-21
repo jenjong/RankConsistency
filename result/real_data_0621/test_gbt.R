@@ -40,8 +40,8 @@ seed_v = 1
   sc_listFun
   
   sc_list <- sc_listFun(cvec, Qpmat, Gmat_hat)
-  
-  
+######### sc_mat code   
+{
   
   sc_mat <-sc_list[[1]]
   
@@ -74,32 +74,33 @@ seed_v = 1
   }
   colSums(is.na(n_mat))
   44-rank(apply(n_mat,1,sum, na.rm = T))
-  
-  ### make the test set #####
-  gbt_fit <- gbt_eval(sc_list, race_mat_test = NULL, num_vec_test = NULL, cvec, 
+}  
+### make the test set #####
+gbt_fit <- gbt_eval(sc_list, race_mat_test = NULL, num_vec_test = NULL, cvec, 
                       return_list = FALSE)
   
-  
+{
   plot(44-rank(gbt_fit$gbt_est_mat[1,]) , 44-rank(naive_est), pch = 19,
        col = heat.colors(43)[rank(apply(Qpmat,1,sum))]  )
   
   plot(44-rank(gbt_fit$gbt_est_mat[1,]),  44-rank(apply(n_mat,1,sum, na.rm = T)),pch = 19,
        col = heat.colors(43)[rank(apply(Qpmat,1,sum))]  )
   plot(44-rank(naive_est), 44-rank(apply(n_mat,1,sum, na.rm = T)))
+  
+  race_mat_test<- as.matrix(rdata[,18:33])
+  num_vec_test <- rdata$V1
+  Qmat_fit <-QmatFunc(race_mat_test, num_vec_test)  
+  Qpmat = Qmat_fit$Qpmat
+}  
 
-    race_mat_test<- as.matrix(rdata[,18:33])
-    num_vec_test <- rdata$V1
-    Qmat_fit <-QmatFunc(race_mat_test, num_vec_test)  
-    Qpmat = Qmat_fit$Qpmat  
-    
-    
-    gbt_est  = gbt_fit$gbt_est_mat[1,]
-    bt_est <- naive_est
-    
-    
-    perform_kendall = matrix(0,length(num_vec_test),2)
-    # evaluation
-    i = 1
+race_mat_test<- as.matrix(rdata[,18:33])
+num_vec_test <- rdata$V1
+gbt_est  = gbt_fit$gbt_est_mat[1,]
+bt_est <- naive_est
+perform_kendall = matrix(0,length(num_vec_test),2)
+  
+# evaluation
+i = 1
     for (i in 1:length(num_vec_test))
     {
       obs_cars <- race_mat_test[i,][1:num_vec_test[i]]
@@ -107,13 +108,19 @@ seed_v = 1
       # BT
       rank_hat  <- order( bt_est[obs_cars], decreasing = T)
       #perform_kendall[i,1] <- (1-cor(rank_true, rank_hat, method = "kendall"))/2
-      perform_kendall[i,1] <- kenFun(obs_cars, bt_est)
+      perform_kendall[i,1] <- kenFun(obs_cars, bt_est, total = TRUE)
       # gBT
       rank_hat  <- order( gbt_est[obs_cars], decreasing = T)
       #perform_kendall[i,2] <- (1-cor(rank_true, rank_hat, method = "kendall"))/2
-      perform_kendall[i,2] <- kenFun(obs_cars, gbt_est)
+      perform_kendall[i,2] <- kenFun(obs_cars, gbt_est, total = TRUE)
     }  
-     apply(perform_kendall,2,mean, na.rm = TRUE)
+i = 490
+for ( i in 1:100)
+{
+  obs_cars <- race_mat_test[i,][1:num_vec_test[i]]
+  cat(obs_cars,'\n')
+}
+     apply(perform_kendall,2, sum, na.rm = TRUE)
      boxplot(perform_kendall)
     
   k2

@@ -229,7 +229,7 @@ balFun = function(obs_cars, bt_est, Qpmat)
 
 
 
-kenFun = function(obs_cars, bt_est)
+kenFun = function(obs_cars, bt_est, total = FALSE)
 {
   pp = length(obs_cars)
   est_coef = bt_est[obs_cars]
@@ -244,7 +244,16 @@ kenFun = function(obs_cars, bt_est)
       i.num = i.num + 1
     }
   }
-  if (i.num > 0) return (v/i.num) else return(0)
+  
+  if (total == FALSE)
+  {
+    if (i.num > 0) return (v/i.num) else return(NA)
+  }
+  
+  if (total == TRUE)
+  {
+    if (i.num > 0) return (v) else return(NA)
+  }
 }
 
 
