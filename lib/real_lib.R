@@ -16,10 +16,10 @@ naive_btFunc<- function(x,y,Qpmat, Gmat_hat)
 
 
 
-QmatFunc <- function(race_mat, num_vec)
+QmatFunc <- function(race_mat, num_vec, p = 43, sel_idx = 1:43)
 {
-  n_mat <- matrix(0, 43, 43)  ## n_mat_jk : j,k 차종의 비교 수(symm mat) 
-  w_mat <- matrix(0, 43, 43)  ## w_mat_jk : j,k 차종의 승리 수 
+  n_mat <- matrix(0, p, p)  ## n_mat_jk : j,k 차종의 비교 수(symm mat) 
+  w_mat <- matrix(0, p, p)  ## w_mat_jk : j,k 차종의 승리 수 
   i=1
   for (i in 1:nrow(race_mat))  ## nrow : 게임 수 
   {
@@ -42,7 +42,10 @@ QmatFunc <- function(race_mat, num_vec)
   {
     sc_alarm <- TRUE
   }
-  Qmat <- n_mat # n_{jk}
+  Qmat <- n_mat[sel_idx, sel_idx]
+  w_mat <- w_mat[sel_idx, sel_idx]
+  
+  
   n = sum(Qmat) ## total 비교 수의 2배 
   
   Gmat_hat <- w_mat/Qmat ## Gmat_hat_jk = j가 k를 이긴 횟수 / n_jk 
@@ -269,24 +272,51 @@ naive_eval <- function(race_mat_test, num_vec_test, naive_est,
   return(list (tau_result = colMeans(perform_v), perform_list = perform_list))
 }
 
+
+gbt_recv <- function(sc_list, p =  43)
+  
+{
+  tmp<-sc_list[[1]]
+  tmp <-tmp[tmp[,1]!=0, 1:3]
+  p_set <-unique(c(tmp[,1:2]))
+  if (length(p_set) != p) 
+  {
+    tau_result[,k] <- NA
+    next
+  }
+  x <- matrix(0, nrow(tmp)*2, p)
+  y <- rep(0, nrow(tmp)*2)
+
+  for ( i in 1:nrow(tmp))
+  {
+    vec1<-tmp[i,1:2]; vec2<- tmp[i,3]
+    x[2*(i-1)+1, vec1] <- c(1,-1) ; y[2*(i-1)+1] <- vec2
+    x[2*i, vec1] <- c(-1,1) ; y[2*i] <- abs(vec2 - 1)
+  }
+  x<- x[,-p]
+  fit<-glmnet(x,y, family = 'binomial', lambda = 0.000001)
+  gbt_est <- c(fit$beta[,1],0)
+  gbt_est    
+} 
+  
 gbt_eval <- function(sc_list, race_mat_test, num_vec_test, cvec, 
-                     return_list = FALSE)
+                     return_list = FALSE, p = 43)
 {
   tau_result <- matrix(NA, 2, length(cvec))
   perform_list = vector(mode = 'list', length = length(cvec))
-  gbt_est_mat <- matrix(NA, length(cvec), 43)
+  gbt_est_mat <- matrix(NA, length(cvec), p)
   for (k in 1:length(cvec))
   {
     tmp<-sc_list[[k]]
     tmp <-tmp[tmp[,1]!=0, 1:3]
     p_set <-unique(c(tmp[,1:2]))
-    if (length(p_set) != 43) 
+    if (length(p_set) != p) 
     {
       tau_result[,k] <- NA
       next
     }
     
-    x <- matrix(0, nrow(tmp)*2, 43)
+    x <- matrix(0, nrow(tmp)*2, p)
     y <- rep(0, nrow(tmp)*2)
     for ( i in 1:nrow(tmp))
     {
@@ -299,7 +329,7 @@ gbt_eval <- function(sc_list, race_mat_test, num_vec_test, cvec,
     fit<-glmnet(x,y, family = 'binomial', lambda = 0.000001)
     gbt_est <- c(fit$beta[,1],0)
     gbt_est_mat[k,] <- gbt_est
-    gbt_rankest <- 44 - rank(gbt_est)
+    gbt_rankest <- p + 1 - rank(gbt_est)
     if (is.null(race_mat_test)) next    
     perform_v <- matrix(0, length(num_vec_test),2)
     for (i in 1:length(num_vec_test))
