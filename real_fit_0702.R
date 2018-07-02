@@ -17,12 +17,8 @@ require('glmnet')
 
 rdata<-read.csv('racing_data.csv', header=F)
 rdata <- rbind(rdata, rdata)
-max_k = 4
-cvec_r <- seq(0, max_k, by = 2)
-file_idx = 1
-cat("iteration::", seed_v, '\n')
-seed_v_i = (file_idx -1)*inner_iter + seed_v
-set.seed(seed_v_i)
+max_k = 0
+cvec_r <- 0
 sc_list = vector(mode ='list', length = max_k)
 sample_idx <- sort( sample(1:nrow(rdata), trunc(nrow(rdata)*1)))  
 race_mat <- as.matrix(rdata[sample_idx,18:33])   ## train set의 각 게임당 선택 차종 
