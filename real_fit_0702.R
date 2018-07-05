@@ -4,28 +4,34 @@ load("Real_BT_gBT2_cv5_all_data.rdata")
 gBT2_est_rank
 BT_est_rank
 # 
-which(BT_est_rank==9)
-gBT2_est_rank[40]
-which(BT_est_rank==4)
-gBT2_est_rank[12]
+#which(BT_est_rank==9)
+#gBT2_est_rank[40]
+#which(BT_est_rank==4)
+#gBT2_est_rank[12]
 sel_idx = which(BT_est_rank <=13)
+library(igraph)
+library(MASS)
 source('./lib/car_lib.R')
 source('./lib/lib_rank.R')
 source('./lib/sim.R')
 source('./lib/real_lib.R')
 require('glmnet')
-
 rdata<-read.csv('racing_data.csv', header=F)
-rdata <- rbind(rdata, rdata)
 max_k = 0
 cvec_r <- 0
 sc_list = vector(mode ='list', length = max_k)
-sample_idx <- sort( sample(1:nrow(rdata), trunc(nrow(rdata)*1)))  
-race_mat <- as.matrix(rdata[sample_idx,18:33])   ## train set의 각 게임당 선택 차종 
-num_vec<- rdata$V1[sample_idx]  ## 각 게임마다 참여한 유저 수 
-Qmat_fit <-QmatFunc(race_mat, num_vec)  
-Qmat = Qmat_fit$Qmat
-  
+# data preprocessing
+race_mat <- as.matrix(rdata[,18:33])
+num_vec<- rdata$V1
+Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)  
+bt_est <- btFun(Qmat_fit)
+gbt_est <- gbtFun(Qmat_fit)$gbt_estmat
+evalFun_1(rdata, bt_est, sel_idx)
+evalFun_1(rdata, gbt_est, sel_idx)
+
+
+
+
   sum(Qmat[12,-sel_idx])
   sum(Qmat[12,sel_idx])
   sum(Qmat[40,-sel_idx])
@@ -46,4 +52,4 @@ Qmat = Qmat_fit$Qmat
   sum(Wmat[12,sel_idx])/sum(Qmat[12,sel_idx])
   
   sum(Wmat[12,])/sum(Qmat[12,])
-  
+### measure  

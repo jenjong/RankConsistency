@@ -1,44 +1,28 @@
-naive_btFunc<- function(x,y,Qpmat, Gmat_hat)
+# preprocessing function to compute n_jk and w_jk
+QmatFun <- function(race_mat, num_vec, p = 43, sel_idx = 1:43)
 {
-  p = ncol(Qpmat)  
-  wmat = Qpmat*Gmat_hat
-  wmat = t(wmat)
-  wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  ## w_jj 제거 
-  # fit glmnet
-  fit <- glmnet(x, y, family = 'binomial',
-                intercept = FALSE, weights = wvec, lambda = 0,
-                standardize = F, 
-                thresh = 1e-09)
-  est = c(fit$beta[,1],0) ## lambda_43 추가 
-  naive_est <- est
-  return( naive_est )
-}
-
-
-
-QmatFunc <- function(race_mat, num_vec, p = 43, sel_idx = 1:43)
-{
-  n_mat <- matrix(0, p, p)  ## n_mat_jk : j,k 차종의 비교 수(symm mat) 
-  w_mat <- matrix(0, p, p)  ## w_mat_jk : j,k 차종의 승리 수 
+  
+  n_mat <- matrix(0, p, p)  ## n_mat_jk 
+  w_mat <- matrix(0, p, p)  ## w_mat_jk
   i=1
-  for (i in 1:nrow(race_mat))  ## nrow : 게임 수 
+  for (i in 1:nrow(race_mat))  ## nrow 
   {
-    n_v <- num_vec[i] ## n_v : i번째 게임의 참여 유저 수 
-    p_vec<- race_mat[i,1:n_v] ## i번째 게임의 차종(순위대로..) 
+    n_v <- num_vec[i] ## n_v 
+    p_vec<- race_mat[i,1:n_v] 
     for (j in 1:(n_v-1))
     {
       for (k in (j+1):n_v)
       {
-        if (p_vec[j] == p_vec[k]) next  ## 같은 차종이 있을 경우는 제외. 
+        if (p_vec[j] == p_vec[k]) next  ## ties
         w_mat[ p_vec[j], p_vec[k] ] <- w_mat[ p_vec[j], p_vec[k] ] + 1
         n_mat[ p_vec[j], p_vec[k] ] <- n_mat[ p_vec[j], p_vec[k] ] + 1
-        n_mat[ p_vec[k], p_vec[j] ] <- n_mat[ p_vec[j], p_vec[k] ]  ## n_mat은 symm matrix 
+        n_mat[ p_vec[k], p_vec[j] ] <- n_mat[ p_vec[j], p_vec[k] ]  
       }
     }
   }
-  ##########
+  
   sc_alarm <- FALSE
-  if ( min(rowSums(n_mat) ) == 0 )  ## 한 번도 경기를 한 적 없는 차종이 존재하는 경우.. 
+  if ( min(rowSums(n_mat) ) == 0 )  
   {
     sc_alarm <- TRUE
   }
@@ -46,15 +30,13 @@ QmatFunc <- function(race_mat, num_vec, p = 43, sel_idx = 1:43)
   w_mat <- w_mat[sel_idx, sel_idx]
   
   
-  n = sum(Qmat) ## total 비교 수의 2배 
+  n = sum(Qmat) 
   
-  Gmat_hat <- w_mat/Qmat ## Gmat_hat_jk = j가 k를 이긴 횟수 / n_jk 
-  Gmat_hat[!is.finite(Gmat_hat)] = 0  ## j,k의 경기가 없을 경우 0으로.. 
+  Gmat_hat <- w_mat/Qmat 
+  Gmat_hat[!is.finite(Gmat_hat)] = 0  
   Qpmat = Qmat
-  for (j in 1:nrow(Qmat)) Qpmat[j,] = Qmat[j,]/n*2  ## n은 total 비교 수의 2배이므로... 
+  for (j in 1:nrow(Qmat)) Qpmat[j,] = Qmat[j,]/n*2  
   
-  #############################################
-  ## x matrix와 y vector 만들기 
   p = ncol(Qmat)
   x = matrix(0, p*(p-1), p)
   y = rep(0, p*(p-1) )
@@ -72,15 +54,44 @@ QmatFunc <- function(race_mat, num_vec, p = 43, sel_idx = 1:43)
     }
   }
   x = x[,-p]
-  #############################################
+  colnames(Gmat_hat) = colnames(Qpmat) = 
+    colnames(Qmat) = colnames(w_mat) = names(sel_idx)
+  
   return( list(x=x, y=y, Qpmat=Qpmat, Gmat_hat=Gmat_hat, 
                n = n, sc_alarm = sc_alarm, Qmat = Qmat,
                Wmat = w_mat) )
 }
 
 
-sc_listFun<-function(cvec, Qpmat, Gmat_hat)
+# Fit the Bradley model
+btFun<- function(Qmat_fit)
 {
+  Qpmat = Qmat_fit$Qpmat  
+  Gmat_hat = Qmat_fit$Gmat_hat
+  x = Qmat_fit$x
+  y = Qmat_fit$y
+  p = ncol(Qpmat)  
+  wmat = Qpmat*Gmat_hat
+  wmat = t(wmat)
+  wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  ## w_jj 제거 
+  # fit glmnet
+  fit <- glmnet(x, y, family = 'binomial',
+                intercept = FALSE, weights = wvec, lambda = 0,
+                standardize = F, 
+                thresh = 1e-09)
+  est = c(fit$beta[,1],0) ## lambda_43 추가 
+  naive_est <- est
+  names(naive_est) = colnames(Qpmat)
+  return( naive_est )
+}
+
+# Fit the generalized Bradley model with cvec[k] (thresholding parameter)
+gbtFun <-function(Qmat_fit, cvec=0)
+{
+  
+  Qpmat = Qmat_fit$Qpmat
+  Gmat_hat = Qmat_fit$Gmat_hat
+
   sc_list = list()
   p = ncol(Qpmat)
   for ( k in 1:length(cvec))
@@ -124,7 +135,6 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat)
         Qpmat.c2[,i2] <- Qpmat.c2[i2,]  ## Qpmat.c2 : symm matrix
         
         #idx3 <- sort( union(intersect( setdiff(1:p, idx1), setdiff(1:p, idx2) ),  c(i1, i2)) )
-        
         ## find V_jk(maximum connected set)                
         i1i2_adj_matrix = matrix(as.integer(Qpmat.c2>0) , p , p)  ## adjacency matrix
         i1i2_graph = graph_from_adjacency_matrix(i1i2_adj_matrix , 
@@ -182,7 +192,36 @@ sc_listFun<-function(cvec, Qpmat, Gmat_hat)
     }
     sc_list[[k]] <- result
   }
-  return( sc_list )
+  gbt_estmat = NULL
+  for (k in 1:length(cvec))
+  {
+    tmp<-sc_list[[k]]  
+    tmp <-tmp[tmp[,1]!=0, 1:3]
+    
+    p_set <-unique(c(tmp[,1:2]))
+    
+    if (length(p_set) != p) 
+    {
+      gbt_est = NULL
+      next
+    }
+    
+    x <- matrix(0, nrow(tmp)*2, p)
+    y <- rep(0, nrow(tmp)*2)
+    for ( i in 1:nrow(tmp))
+    {
+      vec1<-tmp[i,1:2]; vec2<- tmp[i,3]
+      x[2*(i-1)+1, vec1] <- c(1,-1) ; y[2*(i-1)+1] <- vec2
+      x[2*i, vec1] <- c(-1,1) ; y[2*i] <- abs(vec2 - 1)
+    }
+    x<- x[,-p]
+    fit<-glmnet(x,y, family = 'binomial', lambda = 0.000001)
+    gbt_est <- c(fit$beta[,1],0)
+    names(gbt_est) = colnames(Qpmat)
+    gbt_estmat = rbind(gbt_estmat, gbt_est)
+  }
+
+  return( list(sc_list = sc_list, gbt_estmat = gbt_estmat) )
 }
 
 #rank_v<- c(1,2,4,3,6,5)
@@ -208,6 +247,55 @@ dcgFun <- function(rank_v)
   return(v)
 }
 
+
+# measure the performance 
+# evalFun_1: the average of kendall's tau from each game
+evalFun_1 <- function(rdata, est, sel_idx)
+{
+  
+  race_mat <- as.matrix(rdata[,18:33])
+  num_vec<- rdata$V1
+  perform_v <- rep(NA, length(num_vec))
+  tmp = names(est)
+  i = 1
+  for (i in 1:length(num_vec))
+  {
+    obs_cars <- race_mat[i,][1:num_vec[i]]
+    
+    obs_idx = obs_cars %in% sel_idx
+    if ( sum(obs_idx) < 2 ) next
+    obs_cars <- obs_cars[obs_idx]
+    if (length(unique(obs_cars)) <2) next
+    
+    rankest = rank( est[match(obs_cars, sel_idx)], ties.method = "max")
+    perform_v[i] = (1- cor(length(obs_cars):1,rankest, method = 'kendall'))/2
+  }
+  mean(perform_v, na.rm = T)  
+}
+
+# evalFun_2: the average of kendall's tau from total game
+evalFun_2 <- function(rdata, est, sel_idx)
+{
+  
+  race_mat <- as.matrix(rdata[,18:33])
+  num_vec<- rdata$V1
+  perform_v <- rep(NA, length(num_vec))
+  tmp = names(est)
+  i = 1
+  for (i in 1:length(num_vec))
+  {
+    obs_cars <- race_mat[i,][1:num_vec[i]]
+    
+    obs_idx = obs_cars %in% sel_idx
+    if ( sum(obs_idx) < 2 ) next
+    obs_cars <- obs_cars[obs_idx]
+    if (length(unique(obs_cars)) <2) next
+    
+    rankest = rank( est[match(obs_cars, sel_idx)], ties.method = "max")
+    perform_v[i] = (1- cor(length(obs_cars):1,rankest, method = 'kendall'))/2
+  }
+  mean(perform_v, na.rm = T)  
+}
 
 
 
@@ -249,105 +337,6 @@ kenFun = function(obs_cars, bt_est)
     }
   }
   if (i.num > 0) return (v/i.num) else return(0)
-}
-
-
-
-naive_eval <- function(race_mat_test, num_vec_test, naive_est,
-                       return_list = FALSE)
-{
-  naive_rankest <- 44 - rank(naive_est)
-  perform_list = list()
-  perform_v <- matrix(0, length(num_vec_test),2)
-  for (i in 1:length(num_vec_test))
-  {
-    obs_cars <- race_mat_test[i,][1:num_vec_test[i]]
-    rank_true <- 1:length(obs_cars)
-    rank_hat  <- order( naive_est[obs_cars], decreasing = T)
-    
-    perform_v[i,1] <- (1-cor(rank_true, rank_hat, method = "kendall"))/2
-    perform_v[i,2] <-  dcgFun(rank_hat)
-  }
-  if (return_list) perform_list = perform_v else perform_list = NULL
-  return(list (tau_result = colMeans(perform_v), perform_list = perform_list))
-}
-
-
-gbt_recv <- function(sc_list, p =  43)
-  
-{
-  tmp<-sc_list[[1]]
-  tmp <-tmp[tmp[,1]!=0, 1:3]
-  p_set <-unique(c(tmp[,1:2]))
-  if (length(p_set) != p) 
-  {
-    tau_result[,k] <- NA
-    next
-  }
-  x <- matrix(0, nrow(tmp)*2, p)
-  y <- rep(0, nrow(tmp)*2)
-
-  for ( i in 1:nrow(tmp))
-  {
-    vec1<-tmp[i,1:2]; vec2<- tmp[i,3]
-    x[2*(i-1)+1, vec1] <- c(1,-1) ; y[2*(i-1)+1] <- vec2
-    x[2*i, vec1] <- c(-1,1) ; y[2*i] <- abs(vec2 - 1)
-  }
-  x<- x[,-p]
-  fit<-glmnet(x,y, family = 'binomial', lambda = 0.000001)
-  gbt_est <- c(fit$beta[,1],0)
-  gbt_est    
-} 
-  
-gbt_eval <- function(sc_list, race_mat_test, num_vec_test, cvec, 
-                     return_list = FALSE, p = 43)
-{
-  tau_result <- matrix(NA, 2, length(cvec))
-  perform_list = vector(mode = 'list', length = length(cvec))
-  gbt_est_mat <- matrix(NA, length(cvec), p)
-  for (k in 1:length(cvec))
-  {
-    tmp<-sc_list[[k]]
-    tmp <-tmp[tmp[,1]!=0, 1:3]
-    p_set <-unique(c(tmp[,1:2]))
-    if (length(p_set) != p) 
-    {
-      tau_result[,k] <- NA
-      next
-    }
-    
-    x <- matrix(0, nrow(tmp)*2, p)
-    y <- rep(0, nrow(tmp)*2)
-    for ( i in 1:nrow(tmp))
-    {
-      vec1<-tmp[i,1:2]; vec2<- tmp[i,3]
-      x[2*(i-1)+1, vec1] <- c(1,-1) ; y[2*(i-1)+1] <- vec2
-      x[2*i, vec1] <- c(-1,1) ; y[2*i] <- abs(vec2 - 1)
-    }
-    x<- x[,-43]
-    
-    fit<-glmnet(x,y, family = 'binomial', lambda = 0.000001)
-    gbt_est <- c(fit$beta[,1],0)
-    gbt_est_mat[k,] <- gbt_est
-    gbt_rankest <- p + 1 - rank(gbt_est)
-    if (is.null(race_mat_test)) next    
-    perform_v <- matrix(0, length(num_vec_test),2)
-    for (i in 1:length(num_vec_test))
-    {
-      obs_cars <- race_mat_test[i,][1:num_vec_test[i]]
-      rank_true <- 1:length(obs_cars)
-      rank_hat  <- order( gbt_est[obs_cars], decreasing = T)
-      
-      perform_v[i,1] <- (1-cor(rank_true, rank_hat, method = "kendall"))/2
-      perform_v[i,2] <-  dcgFun(rank_hat)
-    }
-    if (return_list) perform_list[[k]] <-perform_v
-    tau_result[,k] <- colMeans(perform_v)
-  }
-  if(!return_list) perform_list = NULL
-  return(list(tau_result_vec = tau_result, 
-              gbt_est_mat = gbt_est_mat,
-              perform_list = perform_list))
 }
 
 
