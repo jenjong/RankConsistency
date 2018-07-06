@@ -88,140 +88,137 @@ btFun<- function(Qmat_fit)
 # Fit the generalized Bradley model with cvec[k] (thresholding parameter)
 gbtFun <-function(Qmat_fit, cvec=0)
 {
-  
+  Qmat = Qmat_fit$Qmat
   Qpmat = Qmat_fit$Qpmat
   Gmat_hat = Qmat_fit$Gmat_hat
 
   sc_list = list()
   p = ncol(Qpmat)
-  for ( k in 1:length(cvec))
+
+  idx = 1
+  result = matrix(0, p*(p-1)/2, 4)
+  for ( i1 in 1:(p-1))
   {
-    #cat('thershold::', k-1, '\n')
-    i1 = 1 ; i2 = 2
-    idx = 1
-    result = matrix(0, p*(p-1)/2, 4)
-    for ( i1 in 1:(p-1))
+    for (i2 in (i1+1):p) 
     {
-      for (i2 in (i1+1):p) 
+      Qpmat.c1 = Qpmat
+      idx1 <- ( Qpmat.c1[i1,] <= cvec )
+      idx2 <- ( Qpmat.c1[i2,] <= cvec )
+      if (sum(idx1)>0 )
       {
-        Qpmat.c1 = Qpmat
-        idx1 <- ( Qpmat.c1[i1,] <= cvec[k] )
-        idx2 <- ( Qpmat.c1[i2,] <= cvec[k] )
-        if (sum(idx1)>0 )
-        {
-          Qpmat.c1[i1,idx1] <- 0 ;  Qpmat.c1[idx1,i1] <- 0
-        }
-        
-        if (sum(idx2)>0 ) 
-        {
-          Qpmat.c1[i2,idx2] <- 0 ;  Qpmat.c1[idx2,i2] <- 0  
-        }
-        
-        Qpmat.c2 = Qpmat.c1
-        ## thresholding procedure
-        Qpmat.c2 = Qpmat.c2*(Qpmat.c2>cvec[k])  
-        
-        nvec1 = Qpmat.c1[i1,]
-        nvec2 = Qpmat.c1[i2,]
-        idx1 = which(nvec1 == 0 | nvec2 == 0)
-        idx2  =  setdiff( idx1, c(i1, i2))
-        
-        nvec3 = (nvec1[-idx1]+nvec2[-idx1])/2
-        Qpmat.c2[i1,-idx1] = Qpmat.c2[i2,-idx1] = nvec3
-        
-        if (length(idx2)>0)  Qpmat.c2[i1,idx2] =  Qpmat.c2[i2,idx2] = 0
-        
-        Qpmat.c2[,i1] <- Qpmat.c2[i1,]
-        Qpmat.c2[,i2] <- Qpmat.c2[i2,]  ## Qpmat.c2 : symm matrix
-        
-        #idx3 <- sort( union(intersect( setdiff(1:p, idx1), setdiff(1:p, idx2) ),  c(i1, i2)) )
-        ## find V_jk(maximum connected set)                
-        i1i2_adj_matrix = matrix(as.integer(Qpmat.c2>0) , p , p)  ## adjacency matrix
-        i1i2_graph = graph_from_adjacency_matrix(i1i2_adj_matrix , 
-                                                 mode="undirected" , weighted=NULL) ## make a graph
-        i1i2_clusters = clusters(i1i2_graph)$mem ## clustering using adj matrix
-        if (i1i2_clusters[i1] != i1i2_clusters[i2]){  ## i1과 i2가 다른 connected 되지 않은 경우
-          #  cat('   k:',k-1,', ',i1,'and',i2, 'is not connected!!\n')
-          idx = idx + 1
-          next  
-        } 
-        ## idx3 : edge index set of V_jk
-        idx3 = sort(which(i1i2_clusters %in% i1i2_clusters[i1])) 
-        
-        #########################################
-        ## computing gBT estimator
-        #########################################  
-        wmat <- Qpmat.c2[idx3,idx3]*Gmat_hat[idx3, idx3]
-        wmat = t(wmat)
-        pp <- length(idx3)
-        wvec = wmat[ - (1 + ( 0:(pp-1) ) *(pp+1))] 
-        xx = matrix(0, pp*(pp-1), pp)
-        yy = rep(0, pp*(pp-1) )
-        ix = 1
-        for (i in 1:pp)
-        {
-          for (j in 1:pp)
-          {
-            if (i == j) next
-            jx1 = min(i,j)
-            jx2 = max(i,j)
-            xx[ix,jx1] = 1; xx[ix,jx2] = -1
-            if (i<j) yy[ix] = 1
-            ix = ix + 1
-          }
-        }
-        xx = xx[,-pp]
-        
-        try.fit <- try(fit <- glmnet(xx, yy, family = 'binomial',
-                                     intercept = FALSE, weights = wvec, 
-                                     lambda = 0.0001, alpha = 0, standardize = F,
-                                     thresh = 1e-09),
-                       silent = T)
-        if (class(try.fit)[1] == 'try-error')  
-        {
-          idx = idx + 1
-          next
-        }
-        
-        est = c(fit$beta[,1],0)
-        result[idx, 1:2] = c(i1, i2)
-        if( est[which(idx3==i1)] > est[which(idx3==i2)]) result[idx, 3] = 1
-        
-        idx = idx + 1
+        Qpmat.c1[i1,idx1] <- 0 ;  Qpmat.c1[idx1,i1] <- 0
       }
+      
+      if (sum(idx2)>0 ) 
+      {
+        Qpmat.c1[i2,idx2] <- 0 ;  Qpmat.c1[idx2,i2] <- 0  
+      }
+      
+      Qpmat.c2 = Qpmat.c1
+      ## thresholding procedure
+      Qpmat.c2 = Qpmat.c2*(Qpmat.c2>cvec)  
+      nvec1 = Qpmat.c1[i1,]
+      nvec2 = Qpmat.c1[i2,]
+      idx1 = which(nvec1 == 0 | nvec2 == 0)
+      idx2  =  setdiff( idx1, c(i1, i2))
+      
+      nvec3 = (nvec1[-idx1]+nvec2[-idx1])/2
+      Qpmat.c2[i1,-idx1] = Qpmat.c2[i2,-idx1] = nvec3
+      
+      if (length(idx2)>0)  Qpmat.c2[i1,idx2] =  Qpmat.c2[i2,idx2] = 0
+      
+      Qpmat.c2[,i1] <- Qpmat.c2[i1,]
+      Qpmat.c2[,i2] <- Qpmat.c2[i2,]  ## Qpmat.c2 : symm matrix
+      
+      #idx3 <- sort( union(intersect( setdiff(1:p, idx1), setdiff(1:p, idx2) ),  c(i1, i2)) )
+      ## find V_jk(maximum connected set)                
+      i1i2_adj_matrix = matrix(as.integer(Qpmat.c2>0) , p , p)  ## adjacency matrix
+      i1i2_graph = graph_from_adjacency_matrix(i1i2_adj_matrix , 
+                                               mode="undirected" , weighted=NULL) 
+      ## make a graph
+      i1i2_clusters = clusters(i1i2_graph)$mem ## clustering using adj matrix
+      if (i1i2_clusters[i1] != i1i2_clusters[i2]){  
+        ## i1과 i2가 다른 connected 되지 않은 경우
+        #  cat('   k:',k-1,', ',i1,'and',i2, 'is not connected!!\n')
+        idx = idx + 1
+        next  
+      } 
+      ## idx3 : edge index set of V_jk
+      idx3 = sort(which(i1i2_clusters %in% i1i2_clusters[i1])) 
+      
+      #########################################
+      ## computing gBT estimator
+      #########################################  
+      
+      wmat <- Qpmat.c2[idx3,idx3]*Gmat_hat[idx3, idx3]
+      wmat = t(wmat)
+      pp <- length(idx3)
+      wvec = wmat[ - (1 + ( 0:(pp-1) ) *(pp+1))] 
+      xx = matrix(0, pp*(pp-1), pp)
+      yy = rep(0, pp*(pp-1) )
+      ix = 1
+      for (i in 1:pp)
+      {
+        for (j in 1:pp)
+        {
+          if (i == j) next
+          jx1 = min(i,j)
+          jx2 = max(i,j)
+          xx[ix,jx1] = 1; xx[ix,jx2] = -1
+          if (i<j) yy[ix] = 1
+          ix = ix + 1
+        }
+      }
+      xx = xx[,-pp]
+      
+      try.fit <- try(fit <- glmnet(xx, yy, family = 'binomial',
+                                   intercept = FALSE, weights = wvec, 
+                                   lambda = 0.0001, alpha = 0, standardize = F,
+                                   thresh = 1e-09),
+                     silent = T)
+      if (class(try.fit)[1] == 'try-error')  
+      {
+        idx = idx + 1
+        next
+      }
+      
+      est = c(fit$beta[,1],0)
+      result[idx, 1:2] = c(i1, i2)
+      if( est[which(idx3==i1)] > est[which(idx3==i2)]) result[idx, 3] = 1
+      
+      pweight = sum(Qmat[idx3, idx3])/sum(Qmat)
+      result[idx, 4] = pweight
+      idx = idx + 1
     }
-    sc_list[[k]] <- result
-  }
-  gbt_estmat = NULL
-  for (k in 1:length(cvec))
-  {
-    tmp<-sc_list[[k]]  
-    tmp <-tmp[tmp[,1]!=0, 1:3]
-    
-    p_set <-unique(c(tmp[,1:2]))
-    
-    if (length(p_set) != p) 
-    {
-      gbt_est = NULL
-      next
-    }
-    
-    x <- matrix(0, nrow(tmp)*2, p)
-    y <- rep(0, nrow(tmp)*2)
-    for ( i in 1:nrow(tmp))
-    {
-      vec1<-tmp[i,1:2]; vec2<- tmp[i,3]
-      x[2*(i-1)+1, vec1] <- c(1,-1) ; y[2*(i-1)+1] <- vec2
-      x[2*i, vec1] <- c(-1,1) ; y[2*i] <- abs(vec2 - 1)
-    }
-    x<- x[,-p]
-    fit<-glmnet(x,y, family = 'binomial', lambda = 0.000001)
-    gbt_est <- c(fit$beta[,1],0)
-    names(gbt_est) = colnames(Qpmat)
-    gbt_estmat = rbind(gbt_estmat, gbt_est)
   }
 
-  return( list(sc_list = sc_list, gbt_estmat = gbt_estmat) )
+  # recover gbt_est from sc_list
+  sc_list <- result
+  gbt_est = NULL
+  
+  tmp<-sc_list
+  tmp <-tmp[tmp[,1]!=0, 1:4]
+  p_set <-unique(c(tmp[,1:2]))
+  if (length(p_set) != p) 
+  {
+    gbt_est = NULL
+    next
+  }
+  
+  x <- matrix(0, nrow(tmp)*2, p)
+  y <- rep(0, nrow(tmp)*2)
+  for ( i in 1:nrow(tmp))
+  {
+    vec1<-tmp[i,1:2]; vec2<- tmp[i,3]
+    x[2*(i-1)+1, vec1] <- c(1,-1) ; y[2*(i-1)+1] <- vec2
+    x[2*i, vec1] <- c(-1,1) ; y[2*i] <- abs(vec2 - 1)
+  }
+  x<- x[,-p]
+  w = rep(tmp[,4], each = 2)
+  fit<-glmnet(x,y, weights = w, family = 'binomial', lambda = 0.000001)
+  gbt_est <- c(fit$beta[,1],0)
+  names(gbt_est) = colnames(Qpmat)
+  return( list(sc_list = sc_list, gbt_est = gbt_est) )
 }
 
 #rank_v<- c(1,2,4,3,6,5)
@@ -267,8 +264,9 @@ evalFun_1 <- function(rdata, est, sel_idx)
     obs_cars <- obs_cars[obs_idx]
     if (length(unique(obs_cars)) <2) next
     
-    rankest = rank( est[match(obs_cars, sel_idx)], ties.method = "max")
-    perform_v[i] = (1- cor(length(obs_cars):1,rankest, method = 'kendall'))/2
+    rankest = length(est[match(obs_cars, sel_idx)]) - 
+      rank( est[match(obs_cars, sel_idx)])  + 1
+    perform_v[i] = cor(1:length(obs_cars), rankest, method = 'kendall')
   }
   mean(perform_v, na.rm = T)  
 }
@@ -282,6 +280,7 @@ evalFun_2 <- function(rdata, est, sel_idx)
   perform_v <- rep(NA, length(num_vec))
   tmp = names(est)
   i = 1
+  n = 0
   for (i in 1:length(num_vec))
   {
     obs_cars <- race_mat[i,][1:num_vec[i]]
@@ -291,10 +290,29 @@ evalFun_2 <- function(rdata, est, sel_idx)
     obs_cars <- obs_cars[obs_idx]
     if (length(unique(obs_cars)) <2) next
     
-    rankest = rank( est[match(obs_cars, sel_idx)], ties.method = "max")
-    perform_v[i] = (1- cor(length(obs_cars):1,rankest, method = 'kendall'))/2
+    rankest = length(est[match(obs_cars, sel_idx)]) - 
+      rank( est[match(obs_cars, sel_idx)])  + 1
+    perform_v[i] = cov(1:length(obs_cars), rankest, method = 'kendall')
+    n = n + length(rankest)*(length(rankest)-1)
   }
-  mean(perform_v, na.rm = T)  
+  sum(perform_v, na.rm = T)/n 
+}
+
+# evalFun_3: the average of kendall's tau from total game
+evalFun_3 <- function(Qmat_fit, est)
+{
+  Gmat_hat = Qmat_fit$Gmat_hat
+  Qmat = Qmat_fit$Qmat
+  for ( i in 1:(length(est)-1))
+  {
+    for (j in (i+1):length(est))
+    {
+      if ( est[i]-est[j] <= 0) Gmat_hat[i,j] = NA else Gmat_hat[j,i] = NA
+    }
+  }
+  Gmat_hat[Qmat==0] = NA
+  
+  sum(Gmat_hat, na.rm = T)/sum(!is.na(Gmat_hat))
 }
 
 

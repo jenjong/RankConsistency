@@ -3,12 +3,15 @@ setwd('C:/Users/Jeon/Documents/GitHub/RankConsistency')
 load("Real_BT_gBT2_cv5_all_data.rdata")
 gBT2_est_rank
 BT_est_rank
+
 # 
 #which(BT_est_rank==9)
 #gBT2_est_rank[40]
 #which(BT_est_rank==4)
 #gBT2_est_rank[12]
 sel_idx = which(BT_est_rank <=13)
+sel_idx = sel_idx[!sel_idx==34]
+sel_idx = sel_idx[!sel_idx==38]
 library(igraph)
 library(MASS)
 source('./lib/car_lib.R')
@@ -25,11 +28,17 @@ race_mat <- as.matrix(rdata[,18:33])
 num_vec<- rdata$V1
 Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)  
 bt_est <- btFun(Qmat_fit)
-gbt_est <- gbtFun(Qmat_fit)$gbt_estmat
+gbt_est <- gbtFun(Qmat_fit)$gbt_est
 evalFun_1(rdata, bt_est, sel_idx)
 evalFun_1(rdata, gbt_est, sel_idx)
 
+evalFun_2(rdata, bt_est, sel_idx)
+evalFun_2(rdata, gbt_est, sel_idx)
 
+evalFun_3(Qmat_fit, est)
+  
+
+plot(rank(bt_est), rank(gbt_est))
 
 
   sum(Qmat[12,-sel_idx])
