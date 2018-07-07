@@ -3,8 +3,6 @@ setwd('C:/Users/Jeon/Documents/GitHub/RankConsistency')
 load("Real_BT_gBT2_cv5_all_data.rdata")
 gBT2_est_rank
 BT_est_rank
-
-
 #which(BT_est_rank==9)
 #gBT2_est_rank[40]
 #which(BT_est_rank==4)
@@ -28,7 +26,7 @@ num_vec<- rdata$V1
 Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)  
 bt_est <- btFun(Qmat_fit)
 u = sort(unique(c(Qmat_fit$Qpmat)))
-gbt_est <- gbtFun(Qmat_fit, cvec = u[2])$gbt_est
+gbt_est <- gbtFun(Qmat_fit, cvec = u[1])$gbt_est
 
 
 evalFun_1(rdata, bt_est, sel_idx)

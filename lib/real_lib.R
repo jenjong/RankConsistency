@@ -149,14 +149,16 @@ gbtFun <-function(Qmat_fit, cvec=0)
       idx3 = sort(which(i1i2_clusters %in% i1i2_clusters[i1])) 
       }
       ## balancing
-      j1_mat = Qpmat.c2[c(i1,i2),]
-      if (j1_mat[1,i2]!=0)
-      {
-        a1 = j1_mat[1,i2]
-        a2 = max(j1_mat[1,][j1_mat[1,]!=0])
-        if (a1<a2) Qpmat.c2[i1,i2] = Qpmat.c2[i2,i1] = a2
-      }
+      # j1_mat = Qpmat.c2[c(i1,i2),]
+      # if (j1_mat[1,i2]!=0)
+      # {
+      #   a1 = j1_mat[1,i2]
+      #   a2 = max(j1_mat[1,][j1_mat[1,]!=0])
+      #   if (a1<a2) Qpmat.c2[i1,i2] = Qpmat.c2[i2,i1] = a2
+      # }
       ####
+      a = max(Qpmat.c2[c(i1,i2),])
+      Qpmat.c2[c(i1,i2),][Qpmat.c2[c(i1,i2),]!=0] = a
       
       #########################################
       ## computing gBT estimator
