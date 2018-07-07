@@ -129,7 +129,8 @@ gbtFun <-function(Qmat_fit, cvec=0)
       
       Qpmat.c2[,i1] <- Qpmat.c2[i1,]
       Qpmat.c2[,i2] <- Qpmat.c2[i2,]  ## Qpmat.c2 : symm matrix
-      
+      # extend the graph
+      {
       #idx3 <- sort( union(intersect( setdiff(1:p, idx1), setdiff(1:p, idx2) ),  c(i1, i2)) )
       ## find V_jk(maximum connected set)                
       i1i2_adj_matrix = matrix(as.integer(Qpmat.c2>0) , p , p)  ## adjacency matrix
@@ -137,7 +138,8 @@ gbtFun <-function(Qmat_fit, cvec=0)
                                                mode="undirected" , weighted=NULL) 
       ## make a graph
       i1i2_clusters = clusters(i1i2_graph)$mem ## clustering using adj matrix
-      if (i1i2_clusters[i1] != i1i2_clusters[i2]){  
+      if (i1i2_clusters[i1] != i1i2_clusters[i2])
+      {  
         ## i1과 i2가 다른 connected 되지 않은 경우
         #  cat('   k:',k-1,', ',i1,'and',i2, 'is not connected!!\n')
         idx = idx + 1
@@ -145,6 +147,16 @@ gbtFun <-function(Qmat_fit, cvec=0)
       } 
       ## idx3 : edge index set of V_jk
       idx3 = sort(which(i1i2_clusters %in% i1i2_clusters[i1])) 
+      }
+      ## balancing
+      j1_mat = Qpmat.c2[c(i1,i2),]
+      if (j1_mat[1,i2]!=0)
+      {
+        a1 = j1_mat[1,i2]
+        a2 = max(j1_mat[1,][j1_mat[1,]!=0])
+        if (a1<a2) Qpmat.c2[i1,i2] = Qpmat.c2[i2,i1] = a2
+      }
+      ####
       
       #########################################
       ## computing gBT estimator
@@ -202,7 +214,8 @@ gbtFun <-function(Qmat_fit, cvec=0)
   if (length(p_set) != p) 
   {
     gbt_est = NULL
-    next
+    cat('gbt_est is NULL!')
+    return( list(sc_list = sc_list, gbt_est = gbt_est) )
   }
   
   x <- matrix(0, nrow(tmp)*2, p)
