@@ -332,6 +332,102 @@ evalFun_3 <- function(Qmat_fit, est)
 
 
 
+evalFun_3_pair = function(result, Qmat_fit)
+{
+  Gmat_hat = Qmat_fit$Gmat_hat
+  Qmat = Qmat_fit$Qmat
+  p = ncol(Qmat)
+  idx = 1
+  for (i in 1:(p-1))
+  {
+    for ( j in (i+1):p)
+    {
+      if (result[idx,1] == 0) 
+      {
+        Gmat_hat[i,j] = Gmat_hat[j,i] = NA
+        idx = idx + 1
+        next
+      }
+      
+      if ( result[idx,3] == 0) Gmat_hat[i,j] = NA else Gmat_hat[j,i] = NA
+      idx = idx + 1
+    }
+  }
+  Gmat_hat[Qmat==0] = NA
+  sum(Gmat_hat, na.rm = T)/sum(!is.na(Gmat_hat))
+}
+
+# sr
+sr1_fun = function(Qmat_fit)
+{
+  Gmat = Qmat_fit$Gmat_hat
+  Qmat = Qmat_fit$Qmat
+  Wmat = Qmat_fit$Wmat
+  p = nrow(Gmat)
+  result = matrix(0, p*(p-1)/2, 4)
+  i = 1
+  j = 8
+  idx = 1
+  for ( i in 1:(p-1))
+  {
+    for (j in (i+1):p)
+    {
+      n1 = Qmat[i,] ; n2 = Qmat[j,] ; v1 = Gmat[i,] ; v2 = Gmat[j,]
+      withvec = n1*n2 != 0
+      
+      if ((Qmat[i,j] == 0) & (sum(withvec)==0)) 
+      {
+        idx = idx + 1
+        next
+      }
+      
+      if (Qmat[i,j] == 0) 
+      {
+        wr1 = mean(v1[withvec])
+        wr2 = mean(v2[withvec])
+      }
+      
+      if (Qmat[i,j] != 0) 
+      {
+        withvec[c(i,j)] = TRUE
+        wr1 = sum(v1[withvec])/(length(v1[withvec])-1)
+        wr2 = sum(v2[withvec])/(length(v2[withvec])-1)
+      }
+      
+      result[idx, 1:3] = c(i,j, as.integer(wr1 > wr2) )
+      idx = idx + 1
+    }
+  }
+  result
+}
+
+# pair 
+sr2_fun = function(Qmat_fit)
+{
+  Gmat = Qmat_fit$Gmat_hat
+  Qmat = Qmat_fit$Qmat
+  Wmat = Qmat_fit$Wmat
+  p = nrow(Gmat) 
+  result = matrix(0, p*(p-1)/2, 4)
+  i = 1
+  j = 2
+  idx = 1
+  for ( i in 1:(p-1))
+  {
+    for (j in (i+1):p)
+    {
+      n1 = Qmat[i,] ; n2 = Qmat[j,] ; v1 = Wmat[i,] ; v2 = Wmat[j,]
+      wr1 = sum(v1)/sum(n1)
+      wr2 = sum(v2)/sum(n2)
+      result[idx, 1:3] = c(i,j, as.integer(wr1 > wr2) )
+      idx = idx + 1
+    }
+  }
+  result
+}
+
+
+
 balFun = function(obs_cars, bt_est, Qpmat)
 {
   pp = length(obs_cars)

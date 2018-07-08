@@ -26,7 +26,8 @@ num_vec<- rdata$V1
 Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)  
 bt_est <- btFun(Qmat_fit)
 u = sort(unique(c(Qmat_fit$Qpmat)))
-gbt_est <- gbtFun(Qmat_fit, cvec = u[1])$gbt_est
+gbt_fit <- gbtFun(Qmat_fit, cvec = u[1])
+gbt_est <- gbt_fit$gbt_est
 
 
 evalFun_1(rdata, bt_est, sel_idx)
@@ -37,6 +38,9 @@ evalFun_2(rdata, gbt_est, sel_idx)
 
 evalFun_3(Qmat_fit, bt_est)
 evalFun_3(Qmat_fit, gbt_est)
+evalFun_3_pair(gbt_fit$sc_list, Qmat_fit)
+evalFun_3_pair(sr1_fun(Qmat_fit), Qmat_fit)
+evalFun_3_pair(sr2_fun(Qmat_fit), Qmat_fit)
 
 # 
 set.seed(1)
