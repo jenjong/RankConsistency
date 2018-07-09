@@ -62,7 +62,6 @@ QmatFun <- function(race_mat, num_vec, p = 43, sel_idx = 1:43)
                Wmat = w_mat) )
 }
 
-
 # Fit the Bradley model
 btFun<- function(Qmat_fit)
 {
@@ -86,7 +85,7 @@ btFun<- function(Qmat_fit)
 }
 
 # Fit the generalized Bradley model with cvec[k] (thresholding parameter)
-gbtFun <-function(Qmat_fit, cvec=0)
+gbtFun <-function(Qmat_fit, cut_v=0, ctype = 'boost')
 {
   Qmat = Qmat_fit$Qmat
   Qpmat = Qmat_fit$Qpmat
@@ -102,8 +101,8 @@ gbtFun <-function(Qmat_fit, cvec=0)
     for (i2 in (i1+1):p) 
     {
       Qpmat.c1 = Qpmat
-      idx1 <- ( Qpmat.c1[i1,] <= cvec )
-      idx2 <- ( Qpmat.c1[i2,] <= cvec )
+      idx1 <- ( Qpmat.c1[i1,] <= cut_v )
+      idx2 <- ( Qpmat.c1[i2,] <= cut_v )
       if (sum(idx1)>0 )
       {
         Qpmat.c1[i1,idx1] <- 0 ;  Qpmat.c1[idx1,i1] <- 0
@@ -116,7 +115,7 @@ gbtFun <-function(Qmat_fit, cvec=0)
       
       Qpmat.c2 = Qpmat.c1
       ## thresholding procedure
-      Qpmat.c2 = Qpmat.c2*(Qpmat.c2>cvec)  
+      Qpmat.c2 = Qpmat.c2*(Qpmat.c2>cut_v)  
       nvec1 = Qpmat.c1[i1,]
       nvec2 = Qpmat.c1[i2,]
       idx1 = which(nvec1 == 0 | nvec2 == 0)
@@ -148,18 +147,26 @@ gbtFun <-function(Qmat_fit, cvec=0)
       ## idx3 : edge index set of V_jk
       idx3 = sort(which(i1i2_clusters %in% i1i2_clusters[i1])) 
       }
-      ## balancing
-      # j1_mat = Qpmat.c2[c(i1,i2),]
-      # if (j1_mat[1,i2]!=0)
-      # {
-      #   a1 = j1_mat[1,i2]
-      #   a2 = max(j1_mat[1,][j1_mat[1,]!=0])
-      #   if (a1<a2) Qpmat.c2[i1,i2] = Qpmat.c2[i2,i1] = a2
-      # }
-      ####
-      a = max(Qpmat.c2[c(i1,i2),])
-      Qpmat.c2[c(i1,i2),][Qpmat.c2[c(i1,i2),]!=0] = a
       
+      # correction
+      
+      if (ctype == 'balance')
+      {
+        j1_mat = Qpmat.c2[c(i1,i2),]
+        j1_vec = j1_mat[j1_mat!=0]
+        if (length(j1_vec)>0)
+        {
+          j1_var = mean(j1_vec)
+          j1_mat[j1_mat!=0] = j1_var
+          Qpmat.c2[c(i1,i2),] = j1_mat
+        }
+      }
+
+      if (ctype == 'boost')
+      {
+        a = max(Qpmat.c2[c(i1,i2),])
+        Qpmat.c2[c(i1,i2),][Qpmat.c2[c(i1,i2),]!=0] = a
+      }
       #########################################
       ## computing gBT estimator
       #########################################  
@@ -234,6 +241,41 @@ gbtFun <-function(Qmat_fit, cvec=0)
   gbt_est <- c(fit$beta[,1],0)
   names(gbt_est) = colnames(Qpmat)
   return( list(sc_list = sc_list, gbt_est = gbt_est) )
+}
+
+gbtFun_recov = function(result, Qmat_fit, method = 'binomial')
+{
+  sc_list <- result
+  Qmat = Qmat_fit$Qmat
+  Qpmat = Qmat_fit$Qpmat
+  Gmat_hat = Qmat_fit$Gmat_hat
+  p = ncol(Qpmat)
+
+  gbt_est = NULL
+  tmp<-sc_list
+  tmp <-tmp[tmp[,1]!=0, 1:4]
+  p_set <-unique(c(tmp[,1:2]))
+  if (length(p_set) != p) 
+  {
+    gbt_est = NULL
+    cat('gbt_est is NULL!')
+    return( list(sc_list = sc_list, gbt_est = gbt_est) )
+  }
+  
+  x <- matrix(0, nrow(tmp)*2, p)
+  y <- rep(0, nrow(tmp)*2)
+  for ( i in 1:nrow(tmp))
+  {
+    vec1<-tmp[i,1:2]; vec2<- tmp[i,3]
+    x[2*(i-1)+1, vec1] <- c(1,-1) ; y[2*(i-1)+1] <- vec2
+    x[2*i, vec1] <- c(-1,1) ; y[2*i] <- abs(vec2 - 1)
+  }
+  x<- x[,-p]
+  w = rep(tmp[,4], each = 2)
+  fit<-glmnet(x,y, weights = w, family = method, lambda = 0.000001)
+  gbt_est <- c(fit$beta[,1],0)
+  names(gbt_est) = colnames(Qpmat)
+  return(gbt_est)
 }
 
 #rank_v<- c(1,2,4,3,6,5)
@@ -398,6 +440,7 @@ sr1_fun = function(Qmat_fit)
       idx = idx + 1
     }
   }
+  result[,4] = 1
   result
 }
 
@@ -423,6 +466,7 @@ sr2_fun = function(Qmat_fit)
       idx = idx + 1
     }
   }
+  result[,4] = 1
   result
 }
 

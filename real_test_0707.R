@@ -55,6 +55,7 @@ sr1_fun = function(Qmat_fit)
       idx = idx + 1
     }
   }
+  result[,4] = 1
   result
 }
 
@@ -80,6 +81,7 @@ sr2_fun = function(Qmat_fit)
       idx = idx + 1
     }
   }
+  result[,4] = 1
   result
 }
 
