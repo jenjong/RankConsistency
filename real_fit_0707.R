@@ -2,9 +2,10 @@ rm(list = ls())
 setwd('C:/Users/Jeon/Documents/GitHub/RankConsistency')
 load("Real_BT_gBT2_cv5_all_data.rdata")
 sel_idx = which(BT_est_rank <=5)
+#sel_idx = which(gBT2_est_rank <=5)
 #sel_idx = sel_idx[!sel_idx==8]
+#sel_idx = sel_idx[!sel_idx==12]
 #sel_idx = sel_idx[!sel_idx==20]
-#sel_idx = sel_idx[!sel_idx==34]
 #sel_idx = sel_idx[!sel_idx==38]
 library(igraph)
 library(MASS)
@@ -17,35 +18,45 @@ rdata<-read.csv('racing_data.csv', header=F)
 # data preprocessing
 #set.seed(1)
 vmat = NULL
+i=1
 for (i in 1:50)
 {
   set.seed(i)
   n = nrow(rdata[,18:33])
   s_idx = sample(1:n, trunc(n*0.7))
   race_mat <- as.matrix(rdata[s_idx,18:33])
-  num_vec <- rdata$V1
+  num_vec <- rdata$V1[s_idx]
   Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)  
   bt_est <- btFun(Qmat_fit)
-  u = sort(unique(c(Qmat_fit$Qpmat)))
-  gbt_est <- gbtFun(Qmat_fit, cvec = u[1])$gbt_est
-  if (is.null(gbt_est)) next
+  gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'balance')
+  gbt_est <- gbt_fit$gbt_est
+  result = sr1_fun(Qmat_fit)
+  sr1_est = gbtFun_recov(result, Qmat_fit, method='binomial')
   
+  if (is.null(gbt_est)) next
   race_mat <- as.matrix(rdata[-s_idx,18:33])
+  num_vec <- rdata$V1[-s_idx]
   Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)  
   v1 = evalFun_1(rdata, bt_est, sel_idx)
   v2 = evalFun_1(rdata, gbt_est, sel_idx)
-  
-  v3 = evalFun_2(rdata, bt_est, sel_idx)
-  v4 = evalFun_2(rdata, gbt_est, sel_idx)
-  
-  v5 = evalFun_3(Qmat_fit, bt_est)
-  v6 = evalFun_3(Qmat_fit, gbt_est)
-  
-  vmat = rbind(vmat, 
-               matrix(c(v1,v2,v3,v4,v5,v6),1,6))
-  
+  v3 = evalFun_1(rdata, sr1_est, sel_idx)
+  #v1 = evalFun_3(Qmat_fit, bt_est)
+  #v2 = evalFun_3(Qmat_fit, gbt_est)
+  #v3 = evalFun_3(Qmat_fit, sr1_est)
+  #v3 = evalFun_3_pair(gbt_fit$sc_list, Qmat_fit)
+  vmat = rbind(vmat, c(v1,v2,v3))
 }
-boxplot(vmat[,1:2])
-boxplot(vmat[,3:4])
-boxplot(vmat[,5:6])
 
+boxplot(vmat[,1:3], ylim = c(0.08, 0.12))
+colMeans(vmat[-10,])
+boxplot(vmat[-10,1:3])
+
+s_idx = sample(1:n, trunc(n*1))
+race_mat <- as.matrix(rdata[s_idx,18:33])
+num_vec <- rdata$V1[s_idx]
+Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)  
+bt_est <- btFun(Qmat_fit)
+gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'none')
+gbt_est <- gbt_fit$gbt_est
+6- rank(bt_est)
+6- rank(gbt_est)

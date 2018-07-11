@@ -250,7 +250,28 @@ gbtFun_recov = function(result, Qmat_fit, method = 'binomial')
   Qpmat = Qmat_fit$Qpmat
   Gmat_hat = Qmat_fit$Gmat_hat
   p = ncol(Qpmat)
-
+  
+  if (method == "count")
+  {
+    mat = matrix(0,p,p);
+    for (i in 1:nrow(result))
+    {
+      j = result[i,1];
+      k = result[i,2];
+      w_jk = result[i,3];
+      if (j == 0) 
+      {
+        mat[j,k] = 0.5;
+        mat[k,j] = 0.5;
+        next;
+      }
+      if (w_jk==1) mat[j,k] = 1  else mat[k,j] = 1;
+    }
+    gbt_est = apply(mat,1,sum);
+    return( gbt_est = gbt_est )
+  }
+    
+  
   gbt_est = NULL
   tmp<-sc_list
   tmp <-tmp[tmp[,1]!=0, 1:4]
@@ -259,7 +280,7 @@ gbtFun_recov = function(result, Qmat_fit, method = 'binomial')
   {
     gbt_est = NULL
     cat('gbt_est is NULL!')
-    return( list(sc_list = sc_list, gbt_est = gbt_est) )
+    return( gbt_est )
   }
   
   x <- matrix(0, nrow(tmp)*2, p)
@@ -272,7 +293,7 @@ gbtFun_recov = function(result, Qmat_fit, method = 'binomial')
   }
   x<- x[,-p]
   w = rep(tmp[,4], each = 2)
-  fit<-glmnet(x,y, weights = w, family = method, lambda = 0.000001)
+  fit<-glmnet(x,y, weights = w, family = method, lambda = 0)
   gbt_est <- c(fit$beta[,1],0)
   names(gbt_est) = colnames(Qpmat)
   return(gbt_est)
@@ -323,6 +344,7 @@ evalFun_1 <- function(rdata, est, sel_idx)
     
     rankest = length(est[match(obs_cars, sel_idx)]) - 
       rank( est[match(obs_cars, sel_idx)])  + 1
+    if (length(unique(rankest)) == 1) next
     perform_v[i] = cor(1:length(obs_cars), rankest, method = 'kendall')
   }
   mean(perform_v, na.rm = T)  
@@ -349,13 +371,14 @@ evalFun_2 <- function(rdata, est, sel_idx)
     
     rankest = length(est[match(obs_cars, sel_idx)]) - 
       rank( est[match(obs_cars, sel_idx)])  + 1
+    if (length(unique(rankest)) == 1) next
     perform_v[i] = cov(1:length(obs_cars), rankest, method = 'kendall')
     n = n + length(rankest)*(length(rankest)-1)
   }
   sum(perform_v, na.rm = T)/n 
 }
 
-# evalFun_3: the average of kendall's tau from total game
+# evalFun_3
 evalFun_3 <- function(Qmat_fit, est)
 {
   Gmat_hat = Qmat_fit$Gmat_hat
@@ -364,7 +387,12 @@ evalFun_3 <- function(Qmat_fit, est)
   {
     for (j in (i+1):length(est))
     {
-      if ( est[i]-est[j] <= 0) Gmat_hat[i,j] = NA else Gmat_hat[j,i] = NA
+      if ( est[i]-est[j] < 0) Gmat_hat[i,j] = NA 
+      if ( est[i]-est[j] > 0) Gmat_hat[j,i] = NA
+      if ( est[i]== est[j])
+      {
+        Gmat_hat[j,i] =  Gmat_hat[i,j] = 0.5
+      }
     }
   }
   Gmat_hat[Qmat==0] = NA

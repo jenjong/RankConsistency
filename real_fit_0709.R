@@ -7,10 +7,11 @@ BT_est_rank
 #gBT2_est_rank[40]
 #which(BT_est_rank==4)
 #gBT2_est_rank[12]
-sel_idx = which(BT_est_rank <=13)
-#sel_idx = sel_idx[!sel_idx==8]
-#sel_idx = sel_idx[!sel_idx==20]
-#sel_idx = sel_idx[!sel_idx==34]
+numofcars = 13
+sel_idx = which(BT_est_rank <=numofcars)
+sel_idx = sel_idx[!sel_idx==8]
+sel_idx = sel_idx[!sel_idx==12]
+sel_idx = sel_idx[!sel_idx==20]
 #sel_idx = sel_idx[!sel_idx==38]
 library(igraph)
 library(MASS)
@@ -29,13 +30,68 @@ Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)
 # estimation
 bt_est <- btFun(Qmat_fit)
 u = sort(unique(c(Qmat_fit$Qpmat)))
-gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, ctype = 'boost')
+gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, ctype = 'balance')
 gbt_est <- gbt_fit$gbt_est
+result = sr1_fun(Qmat_fit)
+sr1_est = gbtFun_recov(result, Qmat_fit, method='binomial')
 
+# estimation-2: 
+result <-gbt_fit$sc_list
+
+evalFun_3_pair(result, Qmat_fit)
+evalFun_3_pair(sr1_fun(Qmat_fit), Qmat_fit)
+
+
+
+est1 = gbtFun_recov(result, Qmat_fit, method='binomial')
+est2 = gbtFun_recov(result, Qmat_fit, method='gaussian')
+est3 = gbtFun_recov(result, Qmat_fit, method='count')
+a1 = 11-rank(est1)
+a2 = 11-rank(est2)
+a3 = 11-rank(est3, ties.method = "max")
+m1 = cbind(a1,a2,a3)
+colnames(m1) = c("logistic", "L2", "SR")
+evalFun_1(rdata, est1, sel_idx)
+evalFun_1(rdata, est2, sel_idx)
+evalFun_1(rdata, est3, sel_idx)
+evalFun_2(rdata, est1, sel_idx)
+evalFun_2(rdata, est2, sel_idx)
+evalFun_2(rdata, est3, sel_idx)
+evalFun_3(Qmat_fit, est1)
+evalFun_3(Qmat_fit, est2)
+evalFun_3(Qmat_fit, est3)
+
+result = sr1_fun(Qmat_fit)
+est1 = gbtFun_recov(result, Qmat_fit, method='binomial')
+est2 = gbtFun_recov(result, Qmat_fit, method='gaussian')
+est3 = gbtFun_recov(result, Qmat_fit, method='count')
+a1 = 11-rank(est1)
+a2 = 11-rank(est2)
+a3 = 11-rank(est3, ties.method = "max")
+m2 = cbind(a1,a2,a3)
+colnames(m1) = c("logistic", "L2", "SR")
+evalFun_1(rdata, est1, sel_idx)
+evalFun_1(rdata, est2, sel_idx)
+evalFun_1(rdata, est3, sel_idx)
+evalFun_2(rdata, est1, sel_idx)
+evalFun_2(rdata, est2, sel_idx)
+evalFun_2(rdata, est3, sel_idx)
+
+evalFun_3(Qmat_fit, est1)
+evalFun_3(Qmat_fit, est2)
+evalFun_3(Qmat_fit, est3)
+
+
+
+rank(est)
+rank(sr1_est)
+gbtFun_recov(result, Qmat_fit, method='count')$gbt_est
 # evaluation
 evalFun_1(rdata, bt_est, sel_idx)
 evalFun_1(rdata, gbt_est, sel_idx)
+evalFun_1(rdata, sr1_est, sel_idx)
 
+#
 evalFun_2(rdata, bt_est, sel_idx)
 evalFun_2(rdata, gbt_est, sel_idx)
 
@@ -47,10 +103,9 @@ evalFun_3_pair(sr2_fun(Qmat_fit), Qmat_fit)
 
 evalFun_3(Qmat_fit, bt_est)
 evalFun_3(Qmat_fit, gbt_est)
-result = sr1_fun(Qmat_fit)
-
-sr1_est = gbtFun_recov(result, Qmat_fit, method='gaussian')
 evalFun_3(Qmat_fit, sr1_est)
+
+
 
 result = gbt_fit$sc_list
 gbt_est = gbtFun_recov(result, Qmat_fit, method = 'gaussian')
