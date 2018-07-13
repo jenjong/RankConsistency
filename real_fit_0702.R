@@ -68,49 +68,26 @@ result2 = sr1_fun(Qmat_fit)
 a2 = evalFun_4_pair(result2, Qmat_fit)
 a3 = cbind(a1$v1, a2$v1, a1$v2)
 
+# 
+gbt_bt = evalFun_5(Qmat_fit, gbt_est)$v1
+sr_bt = evalFun_5(Qmat_fit, sr1_est)$v1
+#
+gbt = evalFun_5_pair(result1, Qmat_fit)$v1
+sr = evalFun_5_pair(result2, Qmat_fit)$v1
+Qmat = evalFun_5_pair(result2, Qmat_fit)$v2
+
+Nmat = Qmat_fit$Qmat
+save(list = c("gbt_bt", "sr_bt", "gbt", "sr", "Qmat", "Nmat"),
+     file = "real_sim.rdata")
+
+a2 = evalFun_4(Qmat_fit, sr1_est)
+a3 = cbind(a1$v1, a2$v1, a1$v2)
+
+
+
 
 result = gbt_fit$sc_list
 gbt_est = gbtFun_recov(result, Qmat_fit, method = 'count')
 evalFun_3(Qmat_fit, gbt_est)
 
 
-
-# 
-set.seed(1)
-n = nrow(rdata[,18:33])
-s_idx = sample(1:n, trunc(n*0.7))
-race_mat <- as.matrix(rdata[s_idx,18:33])
-num_vec <- rdata$V1
-Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)  
-bt_est <- btFun(Qmat_fit)
-u = sort(unique(c(Qmat_fit$Qpmat)))
-gbt_est <- gbtFun(Qmat_fit, cvec = u[2])$gbt_est
-
-
-##
-
-
-plot(rank(bt_est), rank(gbt_est))
-
-
-  sum(Qmat[12,-sel_idx])
-  sum(Qmat[12,sel_idx])
-  sum(Qmat[40,-sel_idx])
-  sum(Qmat[40,])
-  Gmat_hat <- Qmat_fit$Gmat_hat
-  Wmat <- Qmat_fit$Wmat
-  Gmat_hat[40,sel_idx]
-  Gmat_hat[12,sel_idx]
-  cbind(Gmat_hat[40,sel_idx], Gmat_hat[12,sel_idx])
-  cbind(Wmat[40,sel_idx], Wmat[12,sel_idx])
-  cbind(Wmat[40,sel_idx], Wmat[12,sel_idx])
-  cbind(Qmat[40,sel_idx], Qmat[12,sel_idx])
-  cbind(Wmat[40,sel_idx], Wmat[12,sel_idx])/
-  cbind(Qmat[40,sel_idx], Qmat[12,sel_idx])
-  names(Qpmat)
-  
-  sum(Wmat[40,sel_idx])/sum(Qmat[40,sel_idx])
-  sum(Wmat[12,sel_idx])/sum(Qmat[12,sel_idx])
-  
-  sum(Wmat[12,])/sum(Qmat[12,])
-### measure  

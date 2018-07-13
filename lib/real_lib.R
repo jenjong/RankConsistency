@@ -465,8 +465,6 @@ evalFun_4 <- function(Qmat_fit, est)
   list(v1 = v1, v2 = v2)
 }
 
-
-
 evalFun_4_pair = function(result, Qmat_fit)
 {
   tmp1 = result
@@ -494,6 +492,78 @@ evalFun_4_pair = function(result, Qmat_fit)
   names(v1) = names(v2)  = colnames(Gmat_hat)
   list(v1 = v1, v2 = v2)
 }
+
+# evalFun_5
+evalFun_5 <- function(Qmat_fit, est)
+{
+  
+  Gmat_hat = Qmat_fit$Gmat_hat
+  Qmat = Qmat_fit$Qmat
+  p = ncol(Qmat)
+  
+  Gmat_hat[Qmat == 0] = NA
+  GG = matrix(NA, p, p)
+  
+  for ( i in 1:p)
+  {
+    for (j in 1:p)
+    {
+      if (is.na(Gmat_hat[i,j])) next
+      
+      if ( est[i]- est[j] > 0) 
+      {
+        GG[i,j] = Gmat_hat[i,j]
+      }
+      
+      if ( est[i]- est[j] < 0) 
+      {
+        GG[i,j] =  Gmat_hat[j,i]
+      }
+      if ( est[i]== est[j])
+      {
+        GG[i,j] =  0.5
+      }
+    }
+  }
+  
+  v1 = GG
+  v2 = matrix(as.integer(!is.na(Gmat_hat)),p,p)
+  colnames(v1) = colnames(v2)  = rownames(v1) = rownames(v2) = colnames(Gmat_hat)
+  list(v1 = v1, v2 = v2)
+}
+
+
+evalFun_5_pair = function(result, Qmat_fit)
+{
+  tmp1 = result
+  tmp2<-cbind(result[,2], result[,1], 1 - result[,3], result[,4])
+  
+  tmp = rbind(tmp1, tmp2)
+  
+  Gmat_hat = Qmat_fit$Gmat_hat
+  Qmat = Qmat_fit$Qmat
+  p = ncol(Qmat)
+  Gmat_hat[Qmat == 0] = NA
+  GG = matrix(NA, p, p)
+  
+  k = 1
+  for ( k in 1:nrow(tmp))
+  {
+    i = tmp[k,1] 
+    j = tmp[k,2]
+    if (is.na(Gmat_hat[i,j])) next
+    if (tmp[k,3] == 1  )   GG[i,j] =  Gmat_hat[i,j]
+    if (tmp[k,3] == 0  )   GG[i,j] =  Gmat_hat[j,i]
+  }
+  
+  v1 = GG
+  v2 = matrix(as.integer(!is.na(Gmat_hat)),p,p)
+  colnames(v1) = colnames(v2)  = rownames(v1) = rownames(v2) = colnames(Gmat_hat)
+  list(v1 = v1, v2 = v2)
+}
+
+# ev
+
 
 # sr
 sr1_fun = function(Qmat_fit)
