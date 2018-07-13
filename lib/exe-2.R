@@ -1,6 +1,7 @@
 
 ########################################
 # glmnet design matrix and reponse matrix
+
 x = matrix(0, p*(p-1), p)
 y = rep(0, p*(p-1) )
 ix = 1

@@ -29,8 +29,12 @@ Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)
 # estimation
 bt_est <- btFun(Qmat_fit)
 u = sort(unique(c(Qmat_fit$Qpmat)))
-gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, ctype = 'boost')
-gbt_est <- gbt_fit$gbt_est
+gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, ctype = 'balance')
+result = gbt_fit$sc_list
+gbt_est = gbtFun_recov(result, Qmat_fit, method = 'count')
+
+
+
 
 # evaluation
 evalFun_1(rdata, bt_est, sel_idx)
@@ -49,12 +53,27 @@ evalFun_3(Qmat_fit, bt_est)
 evalFun_3(Qmat_fit, gbt_est)
 result = sr1_fun(Qmat_fit)
 
-sr1_est = gbtFun_recov(result, Qmat_fit, method='gaussian')
+sr1_est = gbtFun_recov(result, Qmat_fit, method='binomial')
 evalFun_3(Qmat_fit, sr1_est)
 
+a1 = evalFun_4(Qmat_fit, gbt_est)
+a2 = evalFun_4(Qmat_fit, sr1_est)
+a3 = cbind(a1$v1, a2$v1, a1$v2)
+colSums(a3)/98
+colMeans(a3[,1:2]/a3[,3])
+
+result1 = gbt_fit$sc_list
+a1 = evalFun_4_pair(result1, Qmat_fit)
+result2 = sr1_fun(Qmat_fit)
+a2 = evalFun_4_pair(result2, Qmat_fit)
+a3 = cbind(a1$v1, a2$v1, a1$v2)
+
+
 result = gbt_fit$sc_list
-gbt_est = gbtFun_recov(result, Qmat_fit, method = 'gaussian')
+gbt_est = gbtFun_recov(result, Qmat_fit, method = 'count')
 evalFun_3(Qmat_fit, gbt_est)
+
+
 
 # 
 set.seed(1)

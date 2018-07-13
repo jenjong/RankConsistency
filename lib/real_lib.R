@@ -1,3 +1,7 @@
+# preprocessing function to result table to wide format
+
+
+
 # preprocessing function to compute n_jk and w_jk
 QmatFun <- function(race_mat, num_vec, p = 43, sel_idx = 1:43)
 {
@@ -400,8 +404,6 @@ evalFun_3 <- function(Qmat_fit, est)
   sum(Gmat_hat, na.rm = T)/sum(!is.na(Gmat_hat))
 }
 
-
-
 evalFun_3_pair = function(result, Qmat_fit)
 {
   Gmat_hat = Qmat_fit$Gmat_hat
@@ -425,6 +427,72 @@ evalFun_3_pair = function(result, Qmat_fit)
   }
   Gmat_hat[Qmat==0] = NA
   sum(Gmat_hat, na.rm = T)/sum(!is.na(Gmat_hat))
+}
+
+# evalFun_4
+evalFun_4 <- function(Qmat_fit, est)
+{
+  Gmat_hat = Qmat_fit$Gmat_hat
+  Qmat = Qmat_fit$Qmat
+  Gmat_hat[Qmat == 0] = NA
+  GG = rep(0,length(est))
+  
+  for ( i in 1:(length(est)))
+  {
+    for (j in 1:length(est))
+    {
+      if (is.na(Gmat_hat[i,j])) next
+      
+      if ( est[i]- est[j] > 0) 
+      {
+        GG[i] = GG[i] + Gmat_hat[i,j]
+      }
+      
+      if ( est[i]- est[j] < 0) 
+      {
+        GG[i] = GG[i] + Gmat_hat[j,i]
+      }
+      if ( est[i]== est[j])
+      {
+        GG[i] = GG[i] + 0.5
+      }
+    }
+  }
+  
+  v1 = GG
+  v2 = apply(!is.na(Gmat_hat), 1, sum, na.rm = T)
+  names(v1) = names(v2)  = colnames(Gmat_hat)
+  list(v1 = v1, v2 = v2)
+}
+
+
+
+evalFun_4_pair = function(result, Qmat_fit)
+{
+  tmp1 = result
+  tmp2<-cbind(result[,2], result[,1], 1 - result[,3], result[,4])
+  
+  tmp = rbind(tmp1, tmp2)
+  
+  Gmat_hat = Qmat_fit$Gmat_hat
+  Qmat = Qmat_fit$Qmat
+  Gmat_hat[Qmat == 0] = NA
+  GG = rep(0,ncol(Qmat))
+  
+  k = 1
+  for ( k in 1:nrow(tmp))
+  {
+    i = tmp[k,1] 
+    j = tmp[k,2]
+    if (is.na(Gmat_hat[i,j])) next
+    if (tmp[k,3] == 1  )   GG[i] = GG[i] + Gmat_hat[i,j]
+    if (tmp[k,3] == 0  )   GG[i] = GG[i] + Gmat_hat[j,i]
+  }
+  
+  v1 = GG
+  v2 = apply(!is.na(Gmat_hat), 1, sum, na.rm = T)
+  names(v1) = names(v2)  = colnames(Gmat_hat)
+  list(v1 = v1, v2 = v2)
 }
 
 # sr
@@ -472,7 +540,7 @@ sr1_fun = function(Qmat_fit)
   result
 }
 
-# pair 
+# note that this sr uses only paired comparison results
 sr2_fun = function(Qmat_fit)
 {
   Gmat = Qmat_fit$Gmat_hat
@@ -498,8 +566,6 @@ sr2_fun = function(Qmat_fit)
   result
 }
 
-
-
 balFun = function(obs_cars, bt_est, Qpmat)
 {
   pp = length(obs_cars)
@@ -519,8 +585,6 @@ balFun = function(obs_cars, bt_est, Qpmat)
   return (v)
 }
 
-
-
 kenFun = function(obs_cars, bt_est)
 {
   pp = length(obs_cars)
@@ -539,8 +603,6 @@ kenFun = function(obs_cars, bt_est)
   }
   if (i.num > 0) return (v/i.num) else return(0)
 }
-
-
 
 cv_gbtFun <- function(rdata, cvec,  sample_idx, kfold = 5)
 {
