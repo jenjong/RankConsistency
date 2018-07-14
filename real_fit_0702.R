@@ -31,10 +31,7 @@ bt_est <- btFun(Qmat_fit)
 u = sort(unique(c(Qmat_fit$Qpmat)))
 gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, ctype = 'balance')
 result = gbt_fit$sc_list
-gbt_est = gbtFun_recov(result, Qmat_fit, method = 'count')
-
-
-
+gbt_est = gbtFun_recov(result, Qmat_fit, method = 'count', allowties = F)
 
 # evaluation
 evalFun_1(rdata, bt_est, sel_idx)
@@ -53,7 +50,7 @@ evalFun_3(Qmat_fit, bt_est)
 evalFun_3(Qmat_fit, gbt_est)
 result = sr1_fun(Qmat_fit)
 
-sr1_est = gbtFun_recov(result, Qmat_fit, method='binomial')
+sr1_est = gbtFun_recov(result, Qmat_fit, method='count', allowties = F)
 evalFun_3(Qmat_fit, sr1_est)
 
 a1 = evalFun_4(Qmat_fit, gbt_est)
