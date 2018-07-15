@@ -2,21 +2,14 @@ rm(list = ls())
 setwd('C:/Users/Jeon/Documents/GitHub/RankConsistency')
 load("Real_BT_gBT2_cv5_all_data.rdata")
 sel_idx = which(BT_est_rank <=13)
-#sel_idx = which(gBT2_est_rank <=5)
-#sel_idx = sel_idx[!sel_idx==8]
-#sel_idx = sel_idx[!sel_idx==12]
-#sel_idx = sel_idx[!sel_idx==20]
-#sel_idx = sel_idx[!sel_idx==38]
 library(igraph)
 library(MASS)
 source('./lib/car_lib.R')
 source('./lib/lib_rank.R')
 source('./lib/sim.R')
 source('./lib/real_lib.R')
-require('glmnet')
+library('glmnet')
 rdata<-read.csv('racing_data.csv', header=F)
-# data preprocessing
-#set.seed(1)
 vmat = NULL
 i=1
 for (i in 1:50)
@@ -36,25 +29,28 @@ for (i in 1:50)
   gbt_est = gbtFun_recov(gbt_fit.result, Qmat_fit, 
                          method = 'count', allowties = F)
   sr1.result = sr1_fun(Qmat_fit)
-  sr1_est = gbtFun_recov(sr1.result, Qmat_fit, method='binomial',
+  sr1_est = gbtFun_recov(sr1.result, Qmat_fit, method='count',
                          allowties = F)
   race_mat <- as.matrix(rdata[-s_idx,18:33])
   num_vec <- rdata$V1[-s_idx]
   Qmat_fit <-QmatFun(race_mat, num_vec, cut_var = 0,
                      p=43, sel_idx)  
-  v1 = evalFun_1(rdata, bt_est, sel_idx)
-  v2 = evalFun_1(rdata, gbt_est, sel_idx)
-  v3 = evalFun_1(rdata, sr1_est, sel_idx)
+  # v1 = evalFun_1(rdata, bt_est, sel_idx)
+  # v2 = evalFun_1(rdata, gbt_est, sel_idx)
+  # v3 = evalFun_1(rdata, sr1_est, sel_idx)
+  # vmat = rbind(vmat, c(v1,v2,v3))
+
+  v1 = evalFun_3(Qmat_fit, bt_est)
+  v2 = evalFun_3(Qmat_fit, gbt_est)
+  v3 = evalFun_3(Qmat_fit, sr1_est)
   vmat = rbind(vmat, c(v1,v2,v3))
-  
-  evalFun_3(Qmat_fit, bt_est)
-  evalFun_3(Qmat_fit, gbt_est)
-  result = sr1_fun(Qmat_fit)
-  sr1_est = gbtFun_recov(result, Qmat_fit, method='count', allowties = F)
-  evalFun_3(Qmat_fit, sr1_est)
-  
-  
 }
+
+evalFun_3(Qmat_fit, bt_est)
+evalFun_3(Qmat_fit, gbt_est)
+result = sr1_fun(Qmat_fit)
+sr1_est = gbtFun_recov(result, Qmat_fit, method='count', allowties = F)
+evalFun_3(Qmat_fit, sr1_est)
 
 boxplot(vmat[,1:3])
 colMeans(vmat[-10,])
