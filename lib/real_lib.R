@@ -3,7 +3,8 @@
 
 
 # preprocessing function to compute n_jk and w_jk
-QmatFun <- function(race_mat, num_vec, p = 43, sel_idx = 1:43)
+QmatFun <- function(race_mat, num_vec, cut_var = 0,
+                    p = 43, sel_idx = 1:43)
 {
   
   n_mat <- matrix(0, p, p)  ## n_mat_jk 
@@ -33,6 +34,11 @@ QmatFun <- function(race_mat, num_vec, p = 43, sel_idx = 1:43)
   Qmat <- n_mat[sel_idx, sel_idx]
   w_mat <- w_mat[sel_idx, sel_idx]
   
+  if (cut_var>0)
+  {
+    w_mat[Qmat<=cut_var] = 0
+    Qmat[Qmat<=cut_var] = 0
+  }
   
   n = sum(Qmat) 
   
@@ -547,6 +553,11 @@ evalFun_4_pair = function(result, Qmat_fit)
   {
     i = tmp[k,1] 
     j = tmp[k,2]
+    if (i == 0)
+    {
+      GG[i] = GG[i] + 0.5
+      next
+    }
     if (is.na(Gmat_hat[i,j])) next
     if (tmp[k,3] == 1  )   GG[i] = GG[i] + Gmat_hat[i,j]
     if (tmp[k,3] == 0  )   GG[i] = GG[i] + Gmat_hat[j,i]

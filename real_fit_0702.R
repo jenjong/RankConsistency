@@ -7,7 +7,7 @@ BT_est_rank
 #gBT2_est_rank[40]
 #which(BT_est_rank==4)
 #gBT2_est_rank[12]
-sel_idx = which(BT_est_rank <=13)
+sel_idx = which(BT_est_rank <=43)
 #sel_idx = sel_idx[!sel_idx==8]
 #sel_idx = sel_idx[!sel_idx==20]
 #sel_idx = sel_idx[!sel_idx==34]
@@ -23,13 +23,13 @@ rdata<-read.csv('racing_data.csv', header=F)
 # data preprocessing
 race_mat <- as.matrix(rdata[,18:33])
 num_vec<- rdata$V1
-Qmat_fit <-QmatFun(race_mat, num_vec, p=43, sel_idx)  
-
-
+# drop obs by cut_var option in QmatFun
+Qmat_fit <-QmatFun(race_mat, num_vec, cut_var = 1,
+                   p=43, sel_idx)  
 # estimation
 bt_est <- btFun(Qmat_fit)
 u = sort(unique(c(Qmat_fit$Qpmat)))
-gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, ctype = 'balance')
+gbt_fit <- gbtFun(Qmat_fit, ctype = 'balance')
 result = gbt_fit$sc_list
 gbt_est = gbtFun_recov(result, Qmat_fit, method = 'count', allowties = F)
 
@@ -40,7 +40,6 @@ evalFun_1(rdata, gbt_est, sel_idx)
 evalFun_2(rdata, bt_est, sel_idx)
 evalFun_2(rdata, gbt_est, sel_idx)
 
-
 evalFun_3_pair(gbt_fit$sc_list, Qmat_fit)
 evalFun_3_pair(sr1_fun(Qmat_fit), Qmat_fit)
 evalFun_3_pair(sr2_fun(Qmat_fit), Qmat_fit)
@@ -49,13 +48,14 @@ evalFun_3_pair(sr2_fun(Qmat_fit), Qmat_fit)
 evalFun_3(Qmat_fit, bt_est)
 evalFun_3(Qmat_fit, gbt_est)
 result = sr1_fun(Qmat_fit)
-
 sr1_est = gbtFun_recov(result, Qmat_fit, method='count', allowties = F)
 evalFun_3(Qmat_fit, sr1_est)
+
 
 a1 = evalFun_4(Qmat_fit, gbt_est)
 a2 = evalFun_4(Qmat_fit, sr1_est)
 a3 = cbind(a1$v1, a2$v1, a1$v2)
+
 colSums(a3)/98
 colMeans(a3[,1:2]/a3[,3])
 
