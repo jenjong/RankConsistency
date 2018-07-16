@@ -7,7 +7,7 @@ BT_est_rank
 #gBT2_est_rank[40]
 #which(BT_est_rank==4)
 #gBT2_est_rank[12]
-sel_idx = which(BT_est_rank <=43)
+sel_idx = which(BT_est_rank <=5)
 #sel_idx = sel_idx[!sel_idx==8]
 #sel_idx = sel_idx[!sel_idx==20]
 #sel_idx = sel_idx[!sel_idx==34]

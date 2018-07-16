@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1531721831447.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "6060A87F",
+    "lastKnownWriteTime" : 1531722265,
+    "last_content_update" : 1531722265332,
+    "path" : "~/GitHub/RankConsistency/real_train_0716.R",
+    "project_path" : "real_train_0716.R",
+    "properties" : {
+        "cursorPosition" : "23,11",
+        "scrollLine" : "13"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

@@ -295,58 +295,80 @@ gbtFun_recov = function(result, Qmat_fit, method = 'binomial',
     }
     
     gbt_est = apply(mat,1,sum);
-    gbt_est = gbt_est.copy = rank(gbt_est, ties = 'max')
-    gbt_est.unique = unique(gbt_est)
-    
-    if (!allowties & length(gbt_est.unique) != p)
+    gbt_est = rank(gbt_est, ties = 'max')
+    if (!allowties)
     {
-      gbt_est.table = table(gbt_est)
-      gbt_est.table.names= names(gbt_est.table)
-      gbt_est.dupRank = 
-        as.integer(gbt_est.table.names[which(gbt_est.table>=2)])
-      for (i in 1:length(gbt_est.dupRank))
-      {
-        gbt_est.dupCar = which(gbt_est == gbt_est.dupRank[i])
-        # gbt_est.dupCar is always sorted by which function
-        gbt_est.dupCar.mat = pair_fun(gbt_est.dupCar)
-        for (j in 1:nrow(gbt_est.dupCar.mat))
-        {
-          j1 = gbt_est.dupCar.mat[j,1]
-          j2 = gbt_est.dupCar.mat[j,2]
-          idx = result[,1]==j1 & result[,2]==j2
-          if (any(idx)) 
-          {
-            if (result[idx,3] == 0) gbt_est.dupCar.mat[j,] = c(j2, j1)
-          } else {
-            gbt_est.dupCar.mat[j,] = NA
-            next
-          }
-        }
+      gbt_est = dupFun(gbt_est, result, Qmat)
+      return(gbt_est)
         
-        gbt_est.dupCar.mat = gbt_est.dupCar.mat[!is.na(gbt_est.dupCar.mat[,1]),,drop = FALSE]
-        gbt_est.dupCar.mat = matrix(as.character(gbt_est.dupCar.mat),,ncol(gbt_est.dupCar.mat))
-        gbt_est.dupCar.dgraph = make_graph(edges = t(gbt_est.dupCar.mat))
-        
-        # more coding
-        if (is_dag(gbt_est.dupCar.dgraph))
-        {
-          fit = topo_sort(gbt_est.dupCar.dgraph)
-          gbt_est.dupCar.irank = as.integer(names(fit))
-        } else {
-          fit = apply(Qmat,1,sum)[gbt_est.dupCar]
-          #fit = apply(Qmat[gbt_est.dupCar,gbt_est.dupCar],1,sum)
-          gbt_est.dupCar.irank = gbt_est.dupCar[order(fit, decreasing = T)]
-        }
-        gbt_est.dupCar.assingRank = 
-          (gbt_est.dupRank[i]):(gbt_est.dupRank[i]-length(gbt_est.dupCar)+1)
-        gbt_est.copy[gbt_est.dupCar] = 
-        gbt_est.dupCar.assingRank[match(gbt_est.dupCar.irank, gbt_est.dupCar)]
-        }
+    } else {
+      return(gbt_est)
     }
-    
-    return( gbt_est = gbt_est.copy )
-  }
-
+  }  
+  #   gbt_est.copy = gbt_est
+  #   gbt_est.unique = unique(gbt_est)
+  #   
+  #   if (!allowties & length(gbt_est.unique) != p)
+  #   {
+  #     gbt_est.table = table(gbt_est)
+  #     gbt_est.table.names= names(gbt_est.table)
+  #     gbt_est.dupRank = 
+  #       as.integer(gbt_est.table.names[which(gbt_est.table>=2)])
+  #     for (i in 1:length(gbt_est.dupRank))
+  #     {
+  #       gbt_est.dupCar = which(gbt_est == gbt_est.dupRank[i])
+  #       # gbt_est.dupCar is always sorted by which function
+  #       gbt_est.dupCar.mat = pair_fun(gbt_est.dupCar)
+  #       for (j in 1:nrow(gbt_est.dupCar.mat))
+  #       {
+  #         j1 = gbt_est.dupCar.mat[j,1]
+  #         j2 = gbt_est.dupCar.mat[j,2]
+  #         idx = result[,1]==j1 & result[,2]==j2
+  #         if (any(idx)) 
+  #         {
+  #           if (result[idx,3] == 0) gbt_est.dupCar.mat[j,] = c(j2, j1)
+  #         } else {
+  #           gbt_est.dupCar.mat[j,] = NA
+  #           next
+  #         }
+  #       }
+  #       
+  #       gbt_est.dupCar.mat = gbt_est.dupCar.mat[!is.na(gbt_est.dupCar.mat[,1]),,drop = FALSE]
+  #       
+  #       if (nrow(gbt_est.dupCar.mat) == 0)
+  #       {
+  #         fit = apply(Qmat,1,sum)[gbt_est.dupCar]
+  #         gbt_est.dupCar.irank = gbt_est.dupCar[order(fit, decreasing = T)]
+  #         gbt_est.dupCar.assingRank = 
+  #           (gbt_est.dupRank[i]):(gbt_est.dupRank[i]-length(gbt_est.dupCar)+1)
+  #         gbt_est.copy[gbt_est.dupCar] = 
+  #           gbt_est.dupCar.assingRank[match(gbt_est.dupCar.irank, gbt_est.dupCar)]
+  #         next
+  #       } 
+  #       
+  #       gbt_est.dupCar.mat = matrix(as.character(gbt_est.dupCar.mat),,ncol(gbt_est.dupCar.mat))
+  #       gbt_est.dupCar.dgraph = make_graph(edges = t(gbt_est.dupCar.mat))
+  #       
+  #       # more coding
+  #       if (is_dag(gbt_est.dupCar.dgraph))
+  #       {
+  #         fit = topo_sort(gbt_est.dupCar.dgraph)
+  #         gbt_est.dupCar.irank = as.integer(names(fit))
+  #       } else {
+  #         fit = apply(Qmat,1,sum)[gbt_est.dupCar]
+  #         #fit = apply(Qmat[gbt_est.dupCar,gbt_est.dupCar],1,sum)
+  #         gbt_est.dupCar.irank = gbt_est.dupCar[order(fit, decreasing = T)]
+  #       }
+  #       gbt_est.dupCar.assingRank = 
+  #         (gbt_est.dupRank[i]):(gbt_est.dupRank[i]-length(gbt_est.dupCar)+1)
+  #       gbt_est.copy[gbt_est.dupCar] = 
+  #       gbt_est.dupCar.assingRank[match(gbt_est.dupCar.irank, gbt_est.dupCar)]
+  #       }
+  #   }
+  #   
+  #   return( gbt_est = gbt_est.copy )
+  # }
+  # 
   gbt_est = NULL
   tmp<-sc_list
   tmp <-tmp[tmp[,1]!=0, 1:4]
@@ -373,6 +395,79 @@ gbtFun_recov = function(result, Qmat_fit, method = 'binomial',
   names(gbt_est) = colnames(Qpmat)
   return(gbt_est)
 }
+
+
+dupFun = function(gbt_est, result, Qmat)
+{
+  gbt_est.copy = gbt_est
+  
+  p = ncol(Qmat)
+  gbt_est.unique = unique(gbt_est)
+  if (length(gbt_est.unique) == p ) return(gbt_est.copy)
+  
+  
+  gbt_est.table = table(gbt_est)
+  gbt_est.table.names= names(gbt_est.table)
+  gbt_est.dupRank = 
+    as.integer(gbt_est.table.names[which(gbt_est.table>=2)])
+  
+  for (i in 1:length(gbt_est.dupRank))
+  {
+    gbt_est.dupCar = which(gbt_est == gbt_est.dupRank[i])
+    # gbt_est.dupCar is always sorted by which function
+    gbt_est.dupCar.mat = pair_fun(gbt_est.dupCar)
+    for (j in 1:nrow(gbt_est.dupCar.mat))
+    {
+      j1 = gbt_est.dupCar.mat[j,1]
+      j2 = gbt_est.dupCar.mat[j,2]
+      idx = result[,1]==j1 & result[,2]==j2
+      if (any(idx)) 
+      {
+        if (result[idx,3] == 0) gbt_est.dupCar.mat[j,] = c(j2, j1)
+      } else {
+        gbt_est.dupCar.mat[j,] = NA
+        next
+      }
+    }
+    
+    gbt_est.dupCar.mat = gbt_est.dupCar.mat[!is.na(gbt_est.dupCar.mat[,1]),,drop = FALSE]
+    
+    if (nrow(gbt_est.dupCar.mat) == 0)
+    {
+      fit = apply(Qmat,1,sum)[gbt_est.dupCar]
+      gbt_est.dupCar.irank = gbt_est.dupCar[order(fit, decreasing = T)]
+      gbt_est.dupCar.assingRank = 
+        (gbt_est.dupRank[i]):(gbt_est.dupRank[i]-length(gbt_est.dupCar)+1)
+      gbt_est.copy[gbt_est.dupCar] = 
+        gbt_est.dupCar.assingRank[match(gbt_est.dupCar.irank, gbt_est.dupCar)]
+      next
+    } 
+    
+    gbt_est.dupCar.mat = matrix(as.character(gbt_est.dupCar.mat),
+                                nrow(gbt_est.dupCar.mat),
+                                ncol(gbt_est.dupCar.mat))
+    gbt_est.dupCar.dgraph = make_graph(edges = t(gbt_est.dupCar.mat))
+    
+    # more coding
+    if (is_dag(gbt_est.dupCar.dgraph))
+    {
+      fit = topo_sort(gbt_est.dupCar.dgraph)
+      gbt_est.dupCar.irank = as.integer(names(fit))
+    } else {
+      fit = apply(Qmat[gbt_est.dupCar,gbt_est.dupCar],1,sum)
+      if (sum(fit) == 0) fit = apply(Qmat,1,sum)[gbt_est.dupCar]
+      gbt_est.dupCar.irank = gbt_est.dupCar[order(fit, decreasing = T)]
+    }
+    gbt_est.dupCar.assingRank = 
+      (gbt_est.dupRank[i]):(gbt_est.dupRank[i]-length(gbt_est.dupCar)+1)
+    gbt_est.copy[gbt_est.dupCar] = 
+      gbt_est.dupCar.assingRank[match(gbt_est.dupCar.irank, gbt_est.dupCar)]
+  }
+  
+  return(gbt_est.copy)
+}
+
+
 
 #rank_v<- c(1,2,4,3,6,5)
 dcgFun <- function(rank_v)
