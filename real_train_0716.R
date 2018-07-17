@@ -3,14 +3,14 @@ gc()
 # training code
 # set path
 if (Sys.info()[1] == "Linux") {
-  setwd("/home/jeon/Documents/Github/RankConsistency")
+  setwd("/home/jeon/Documents/GiHub/RankConsistency")
 } else {
   setwd('C:/Users/Jeon/Documents/GitHub/RankConsistency')
 }
 # load car segmentation
 load("Real_BT_gBT2_cv5_all_data.rdata")
 i_1 = 1
-i_2 = 43
+i_2 = 13
 sel_idx = which(BT_est_rank >= i_1 & BT_est_rank <= i_2)
 
 # library 
@@ -21,7 +21,7 @@ source('./lib/car_lib.R')
 source('./lib/lib_rank.R')
 source('./lib/sim.R')
 source('./lib/real_lib.R')
-sim.num = 50
+sim.num = 1
 
 rdata<-read.csv('racing_data.csv', header=F)
 #rdata = rbind(rdata,rdata)
@@ -59,6 +59,14 @@ for (i in 1:sim.num)
   sr1_est.list[[i]] = sr1_est
 }
 
-save(file = paste('./result/real_traninig', i_1, i_2, sep='_'), 
+if (Sys.info()[1] == "Linux")
+{
+  restorePath = '/home/jeon/Dropbox/GitHub/RankConsistency'
+} else {
+  restorePath = 'C:/Users/Jeon/Dropbox/GitHub/RankConsistency'
+}
+
+save(file = paste0(restorePath,
+                  '/result/real_traninig_', i_1,"_", i_2), 
      list = c('sr_est.list',   'bt_est.list', 
               'gbt_est.list', 'sr1_est.list'))
