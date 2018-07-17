@@ -3,7 +3,7 @@ gc()
 # training code
 # set path
 if (Sys.info()[1] == "Linux") {
-  setwd("/home/jeon/Documents/GiHub/RankConsistency")
+  setwd("/home/jeon/Documents/GitHub/RankConsistency")
 } else {
   setwd('C:/Users/Jeon/Documents/GitHub/RankConsistency')
 }
