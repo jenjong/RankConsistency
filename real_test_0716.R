@@ -3,7 +3,7 @@ gc()
 # training code
 # set path
 if (Sys.info()[1] == "Linux") {
-  setwd("/home/jeon/Documents/Github/RankConsistency")
+  setwd("/home/jeon/Documents/GitHub/RankConsistency")
 } else {
   setwd('C:/Users/Jeon/Documents/GitHub/RankConsistency')
 }
@@ -21,18 +21,27 @@ source('./lib/car_lib.R')
 source('./lib/lib_rank.R')
 source('./lib/sim.R')
 source('./lib/real_lib.R')
-sim.num = 50
+sim.num = 100
 
 rdata<-read.csv('racing_data.csv', header=F)
-rdata = rbind(rdata,rdata)
+
 n = nrow(rdata)
 
-load(paste('./result/real_traninig', i_1, i_2, sep='_'))
+if (Sys.info()[1] == "Linux")
+{
+  restorePath = '/home/jeon/Dropbox/GitHub/RankConsistency'
+} else {
+  restorePath = 'C:/Users/Jeon/Dropbox/GitHub/RankConsistency'
+}
+
+load(paste0(restorePath,
+            '/result/real_traninig_', i_1,"_", i_2))
 # test procedure
 vmat1 = vmat2 = vmat3 = NULL
 i = 1
 for (i in 1:sim.num)
 {
+  cat(i,'\n')
   set.seed(i)
   s_idx = sample(1:n, trunc(n*0.7))
   
@@ -40,7 +49,6 @@ for (i in 1:sim.num)
   num_vec <- rdata$V1[-s_idx]
   Qmat_fit <-QmatFun(race_mat, num_vec, cut_var = 0,
                      p=43, sel_idx)  
-  
   gbt_est = gbt_est.list[[i]]
   if (is.null(gbt_est)) next
   bt_est = bt_est.list[[i]]

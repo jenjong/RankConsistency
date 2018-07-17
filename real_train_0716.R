@@ -21,7 +21,7 @@ source('./lib/car_lib.R')
 source('./lib/lib_rank.R')
 source('./lib/sim.R')
 source('./lib/real_lib.R')
-sim.num = 1
+sim.num = 100
 
 rdata<-read.csv('racing_data.csv', header=F)
 #rdata = rbind(rdata,rdata)
@@ -34,6 +34,7 @@ i = 1
 
 for (i in 1:sim.num)
 {
+  cat(i,'\n')
   set.seed(i)
   s_idx = sample(1:n, trunc(n*0.7))
   
@@ -45,14 +46,17 @@ for (i in 1:sim.num)
   
   bt_est <- btFun(Qmat_fit)
   sr_est <- srFun(Qmat_fit)
+  sr1.result = sr1_fun(Qmat_fit)
+  sr1_est = gbtFun_recov(sr1.result, Qmat_fit, method='count',
+                         allowties = F)
+
+  Qmat_fit <-QmatFun(race_mat, num_vec, cut_var = 1,
+                     p=43, sel_idx)  
   gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'balance')
   if (is.null(gbt_fit$gbt_est)) next
   gbt_fit.result = gbt_fit$sc_list
   gbt_est = gbtFun_recov(gbt_fit.result, Qmat_fit, 
                          method = 'count', allowties = F)
-  sr1.result = sr1_fun(Qmat_fit)
-  sr1_est = gbtFun_recov(sr1.result, Qmat_fit, method='count',
-                         allowties = F)
   sr_est.list[[i]] = sr_est
   bt_est.list[[i]] = bt_est
   gbt_est.list[[i]] = gbt_est
