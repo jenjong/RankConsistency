@@ -9,8 +9,8 @@ if (Sys.info()[1] == "Linux") {
 }
 # load car segmentation
 load("Real_BT_gBT2_cv5_all_data.rdata")
-i_1 = 1
-i_2 = 13
+i_1 = 27
+i_2 = 43
 sel_idx = which(BT_est_rank >= i_1 & BT_est_rank <= i_2)
 
 # library 
