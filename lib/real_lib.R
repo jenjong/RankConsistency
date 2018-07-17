@@ -73,6 +73,18 @@ QmatFun <- function(race_mat, num_vec, cut_var = 0,
 }
 
 # Fit the Bradley model
+srFun  <- function(Qmat_fit)
+{
+  Gmat_hat = Qmat_fit$Gmat_hat 
+  Qmat = Qmat_fit$Qmat
+  Gmat_hat[Qmat == 0] = 0.5
+  diag(Gmat_hat) = 0
+  naive_est = rank( apply(Gmat_hat, 1, sum) )
+  names(naive_est) = colnames(Qmat)
+  return(naive_est)
+}
+
+
 btFun<- function(Qmat_fit)
 {
   Qpmat = Qmat_fit$Qpmat  
@@ -299,9 +311,11 @@ gbtFun_recov = function(result, Qmat_fit, method = 'binomial',
     if (!allowties)
     {
       gbt_est = dupFun(gbt_est, result, Qmat)
+      names(gbt_est) = colnames(Qmat)
       return(gbt_est)
         
     } else {
+      names(gbt_est) = colnames(Qmat)
       return(gbt_est)
     }
   }  
@@ -743,8 +757,6 @@ sr1_fun = function(Qmat_fit)
   Wmat = Qmat_fit$Wmat
   p = nrow(Gmat)
   result = matrix(0, p*(p-1)/2, 4)
-  i = 1
-  j = 8
   idx = 1
   for ( i in 1:(p-1))
   {

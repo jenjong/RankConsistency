@@ -30,6 +30,7 @@ n = nrow(rdata)
 load(paste('./result/real_traninig', i_1, i_2, sep='_'))
 # test procedure
 vmat1 = vmat2 = vmat3 = NULL
+i = 1
 for (i in 1:sim.num)
 {
   set.seed(i)
@@ -43,27 +44,31 @@ for (i in 1:sim.num)
   gbt_est = gbt_est.list[[i]]
   if (is.null(gbt_est)) next
   bt_est = bt_est.list[[i]]
+  sr_est = sr_est.list[[i]]
   sr1_est = sr1_est.list[[i]]
   
   v1 = evalFun_1(rdata[-s_idx,], bt_est, sel_idx)
   v2 = evalFun_1(rdata[-s_idx,], gbt_est, sel_idx)
   v3 = evalFun_1(rdata[-s_idx,], sr1_est, sel_idx)
-  vmat1 = rbind(vmat1, c(v1,v2,v3))
+  v4 = evalFun_1(rdata[-s_idx,], sr_est, sel_idx)
+  vmat1 = rbind(vmat1, c(v1,v2,v3,v4))
   
   v1 = evalFun_2(rdata[-s_idx,], bt_est, sel_idx)
   v2 = evalFun_2(rdata[-s_idx,], gbt_est, sel_idx)
   v3 = evalFun_2(rdata[-s_idx,], sr1_est, sel_idx)
-  vmat2 = rbind(vmat2, c(v1,v2,v3))
+  v4 = evalFun_2(rdata[-s_idx,], sr_est, sel_idx)
+  vmat2 = rbind(vmat2, c(v1,v2,v3,v4))
 
   v1 = evalFun_3(Qmat_fit, bt_est)
   v2 = evalFun_3(Qmat_fit, gbt_est)
   v3 = evalFun_3(Qmat_fit, sr1_est)
-  vmat3 = rbind(vmat3, c(v1,v2,v3))
+  v4 = evalFun_3(Qmat_fit, sr_est)
+  vmat3 = rbind(vmat3, c(v1,v2,v3,v4))
 }
 
-boxplot(vmat1[,1:3], names= c("a",'b','c'))
-boxplot(vmat2[,1:3], names= c("a",'b','c'))
-boxplot(vmat3[,1:3], names= c("a",'b','c'))
+boxplot(vmat1[,1:4], names= c("a",'b','c', 'd'))
+boxplot(vmat2[,1:4], names= c("a",'b','c', 'd'))
+boxplot(vmat3[,1:4], names= c("a",'b','c', 'd'))
 
 
 colMeans(vmat1[,1:3])
