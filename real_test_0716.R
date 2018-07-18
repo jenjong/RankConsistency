@@ -85,11 +85,16 @@ if (Sys.info()[1] == "Linux")
   restorePath = 'C:/Users/Jeon/Dropbox/GitHub/RankConsistency'
 }
 
-save.image(file = paste0(restorePath,
-                   '/result/real_test_', i_1,"_", i_2))
+#save.image(file = paste0(restorePath,
+#                   '/result/real_test_', i_1,"_", i_2))
 
 
 
 colMeans(vmat1[,1:3])
 colMeans(vmat2[,1:3])
 colMeans(vmat3[,1:3])
+i_1 = 1 ; i_2 = 13
+load(file = paste0(restorePath, '/result/real_test_', i_1,"_", i_2))
+boxplot(vmat1[,1:4], names= c("a",'b','c', 'd'))
+boxplot(vmat2[,1:4], names= c("a",'b','c', 'd'))
+boxplot(vmat3[,1:4], names= c("a",'b','c', 'd'))
