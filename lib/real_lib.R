@@ -1,10 +1,26 @@
 # preprocessing function to result table to wide format
 
+make_result = function(est)
+{
+  p = length(est)
+  result = NULL
+  for ( i in 1:(p-1))
+  {
+    for (j in (i+1):p)
+    {
+      if (est[i]>=est[j]) v = c(i,j,1,1)
+      if (est[i]<est[j] ) v = c(i,j,0,1)
+      result = rbind(result, v)
+    }
+  }
+  result
+}
+
 
 
 # preprocessing function to compute n_jk and w_jk
 QmatFun <- function(race_mat, num_vec, cut_var = 0,
-                    p = 43, sel_idx = 1:43)
+                    p = 43, sel_idx = 1:43, off_set = FALSE)
 {
   
   n_mat <- matrix(0, p, p)  ## n_mat_jk 
@@ -31,8 +47,17 @@ QmatFun <- function(race_mat, num_vec, cut_var = 0,
   {
     sc_alarm <- TRUE
   }
+  
+  if(off_set)
+  {
+     Qmat = n_mat
+     Qmat[sel_idx, sel_idx] = 0
+     
+  } else  {
+
   Qmat <- n_mat[sel_idx, sel_idx]
   w_mat <- w_mat[sel_idx, sel_idx]
+  }
   
   if (cut_var>0)
   {
@@ -45,6 +70,7 @@ QmatFun <- function(race_mat, num_vec, cut_var = 0,
   Gmat_hat <- w_mat/Qmat 
   Gmat_hat[!is.finite(Gmat_hat)] = 0  
   Qpmat = Qmat
+  
   for (j in 1:nrow(Qmat)) Qpmat[j,] = Qmat[j,]/n*2  
   
   p = ncol(Qmat)
@@ -64,8 +90,17 @@ QmatFun <- function(race_mat, num_vec, cut_var = 0,
     }
   }
   x = x[,-p]
-  colnames(Gmat_hat) = colnames(Qpmat) = 
-    colnames(Qmat) = colnames(w_mat) = names(sel_idx)
+  
+  if(off_set)
+  {
+    colnames(Gmat_hat) = colnames(Qpmat) = 
+      colnames(Qmat) = colnames(w_mat) = 
+      paste0("car",1:p)
+  } else {
+    colnames(Gmat_hat) = colnames(Qpmat) = 
+      colnames(Qmat) = colnames(w_mat) = names(sel_idx)
+  }
+  
   
   return( list(x=x, y=y, Qpmat=Qpmat, Gmat_hat=Gmat_hat, 
                n = n, sc_alarm = sc_alarm, Qmat = Qmat,
@@ -121,7 +156,7 @@ gbtFun <-function(Qmat_fit, cut_v=0, ctype = 'boost')
   for ( i1 in 1:(p-1))
   {
     for (i2 in (i1+1):p) 
-    {
+    { 
       Qpmat.c1 = Qpmat
       idx1 <- ( Qpmat.c1[i1,] <= cut_v )
       idx2 <- ( Qpmat.c1[i2,] <= cut_v )
@@ -341,7 +376,7 @@ gbtFun_recov = function(result, Qmat_fit, method = 'binomial',
   }
   x<- x[,-p]
   w = rep(tmp[,4], each = 2)
-  fit<-glmnet(x,y, weights = w, family = method, lambda = 0)
+  fit<-glmnet(x,y, weights = w, family = method, lambda = 0, thres = 1e-9)
   gbt_est <- round(c(fit$beta[,1],0),4)
   gbt_est = rank(gbt_est, ties = 'max')
   if ((length(unique(gbt_est))!=p) & !allowties)
@@ -533,7 +568,7 @@ evalFun_3 <- function(Qmat_fit, est)
   sum(Gmat_hat, na.rm = T)/sum(!is.na(Gmat_hat))
 }
 
-evalFun_3_pair = function(result, Qmat_fit)
+evalFun_3_pair = function(result, Qmat_fit, sel_idx = NULL)
 {
   Gmat_hat = Qmat_fit$Gmat_hat
   Qmat = Qmat_fit$Qmat
@@ -548,6 +583,15 @@ evalFun_3_pair = function(result, Qmat_fit)
         Gmat_hat[i,j] = Gmat_hat[j,i] = NA
         idx = idx + 1
         next
+      }
+      
+      if (!is.null(sel_idx))
+      {
+        if (!i %in% sel_idx | !j %in% sel_idx) 
+        {
+          Gmat_hat[i,j] = NA
+          Gmat_hat[j,i] = NA
+        }  
       }
       
       if ( result[idx,3] == 0) Gmat_hat[i,j] = NA else Gmat_hat[j,i] = NA
@@ -594,7 +638,7 @@ evalFun_4 <- function(Qmat_fit, est)
   list(v1 = v1, v2 = v2)
 }
 
-evalFun_4_pair = function(result, Qmat_fit)
+evalFun_4_pair = function(result, Qmat_fit, sel_idx = NULL)
 {
   tmp1 = result
   tmp2<-cbind(result[,2], result[,1], 1 - result[,3], result[,4])
@@ -611,6 +655,12 @@ evalFun_4_pair = function(result, Qmat_fit)
   {
     i = tmp[k,1] 
     j = tmp[k,2]
+    if (!is.null(sel_idx))
+    {
+      if (!i %in% sel_idx) next
+      if (!j %in% sel_idx) next
+    }
+    
     if (i == 0)
     {
       GG[i] = GG[i] + 0.5
