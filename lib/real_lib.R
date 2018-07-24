@@ -133,8 +133,7 @@ btFun<- function(Qmat_fit)
   # fit glmnet
   fit <- glmnet(x, y, family = 'binomial',
                 intercept = FALSE, weights = wvec, lambda = 0,
-                standardize = F, 
-                thresh = 1e-09)
+                standardize = F)
   est = c(fit$beta[,1],0) ## lambda_43 추가 
   naive_est <- est
   names(naive_est) = colnames(Qpmat)

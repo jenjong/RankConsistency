@@ -10,7 +10,7 @@ if (Sys.info()[1] == "Linux") {
 # load car segmentation
 load("Real_BT_gBT2_cv5_all_data.rdata")
 i_1 = 1
-i_2 = 43
+i_2 = 13
 sel_idx = which(BT_est_rank >= i_1 & BT_est_rank <= i_2)
 
 # library 
@@ -21,10 +21,9 @@ source('./lib/car_lib.R')
 source('./lib/lib_rank.R')
 source('./lib/sim.R')
 source('./lib/real_lib.R')
-sim.num = 50
+sim.num = 100
 
 rdata<-read.csv('racing_data.csv', header=F)
-#rdata = rbind(rdata,rdata)
 n = nrow(rdata)
 
 bt_est.list = gbt_est.list = sr1_est.list =
@@ -40,7 +39,7 @@ for (i in 1:sim.num)
 {
   cat(i,'\n')
   set.seed(i)
-  s_idx = sample(1:n, trunc(n))
+  s_idx = sample(1:n, trunc(n*0.7))
   
   # training code
   race_mat <- as.matrix(rdata[s_idx,18:33])
@@ -78,7 +77,6 @@ for (i in 1:sim.num)
   gbt_est_bin = gbtFun_recov(gbt_fit.result, Qmat_fit, 
                          method = 'binomial', allowties = F)
   gbt_est.list2[[i]] = gbt_est_bin
-  #if (any(gbt_est_bin != gbt_est)) break
 }
 
 if (Sys.info()[1] == "Linux")
@@ -92,4 +90,6 @@ save(file = paste0(restorePath,
                   '/result/real_traninig_', i_1,"_", i_2), 
      list = c('sr_est.list',   'bt_est.list', 
               'gbt_est.list', 'sr1_est.list',
-              'gbt_est.list2'))
+              'gbt_est.list2',
+              'sim.num'))
+

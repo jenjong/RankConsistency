@@ -1,3 +1,10 @@
+# the step of the experiment
+# 1. select the top-13 ranked cars and fit the ranking 
+# 2. select the all cars and fit the ranking 
+# 3. select the all cars and fit the ranking without the result of the top-13 cars
+# intransitivity
+
+
 rm(list = ls())
 gc()
 # training code
@@ -65,18 +72,22 @@ evalFun_3_pair(sr1_fun(Qmat_fit), Qmat_fit)
 evalFun_3(Qmat_fit, bt_est)
 evalFun_3(Qmat_fit, gbt_est)
 evalFun_3(Qmat_fit, sr1_est)
+evalFun_3(Qmat_fit, sr_est)
 
 ## off_set 
 Qmat_fit <-QmatFun(race_mat, num_vec, cut_var = 1,
                    p=43, sel_idx = setdiff(sel_idx,40), 
                    off_set = T)  
 gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'balance')
-gbt_est_off = gbtFun_recov(gbt_fit_result, Qmat_fit, 
+gbt_est_off = gbtFun_recov(gbt_fit$sc_list, Qmat_fit, 
                        method = 'count', allowties = F)
 gbt_est_off = rank(gbt_est_off[sel_idx])
-
-
 evalFun_3(Qmat_fit, gbt_est_off)
+
+Qmat_fit$Gmat_hat[setdiff(sel_idx,40),setdiff(sel_idx,40)]
+image(Qmat_fit$Gmat_hat[setdiff(sel_idx,40),-setdiff(sel_idx,40)])
+a = Qmat_fit$Gmat_hat[sel_idx,-sel_idx][order(gbt_est_off),]
+image(a)
 
 
 #1:43
