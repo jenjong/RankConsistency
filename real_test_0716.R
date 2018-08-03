@@ -139,14 +139,14 @@ load(file = paste0(restorePath, '/result/real_test_', i_1,"_", i_2))
 boxplot(vmat3[,-3], col='lightblue', 
         names = c('BT', 'gBT', 'gSR','SR'),
         ylab = 'accuracy')
-
+colMeans(vmat3)
 
 i_1 = 1; i_2 = 43
 load(file = paste0(restorePath, '/result/real_test_', i_1,"_", i_2))
 boxplot(vmat3, col='lightblue', 
         names = c('BT', 'gBT', 'gSR','SR'),
         ylab = 'accuracy')
-
+colMeans(vmat3)
 #
 load(file = paste0(restorePath, '/result/real_test_full'))
 boxplot(vmat3[,-3], col='lightblue', 
