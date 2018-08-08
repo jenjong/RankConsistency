@@ -1,5 +1,5 @@
 # mis task 1 (show the results of estimated ranks)
-
+# my mistake
 setwd("C:/Users/Jeon/Documents/GitHub/RankConsistency")
 load('Real_BT_gBT2_cv5_all_data.rdata')
 BT_est_rank
