@@ -217,6 +217,19 @@ gbtFun <-function(Qmat_fit, cut_v=0, ctype = 'boost')
           Qpmat.c2[c(i1,i2),] = j1_mat
         }
       }
+      
+      if (ctype == 'cbalance')
+      {
+        j1_mat = Qpmat.c2[c(i1,i2),]
+        j1_vec = j1_mat[j1_mat!=0]
+        if (length(j1_vec)>0)
+        {
+          j1_var = mean(j1_vec)
+          j1_mat[j1_mat!=0] = j1_var
+          Qpmat.c2[c(i1,i2),] = j1_mat
+          Qpmat.c2[Qpmat.c2!=0] = j1_var
+        }
+      }
 
       if (ctype == 'boost')
       {

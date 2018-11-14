@@ -10,7 +10,7 @@ if (Sys.info()[1] == "Linux") {
 # load car segmentation
 load("Real_BT_gBT2_cv5_all_data.rdata")
 i_1 = 1
-i_2 = 13
+i_2 = 43
 sel_idx = which(BT_est_rank >= i_1 & BT_est_rank <= i_2)
 
 # library 
@@ -57,7 +57,7 @@ for (i in 1:sim.num)
 
   Qmat_fit <-QmatFun(race_mat, num_vec, cut_var = 1,
                      p=43, sel_idx)  
-  gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'balance')
+  gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'cbalance')
   if (is.null(gbt_fit$gbt_est)) next
   gbt_fit.result = gbt_fit$sc_list
   gbt_est = gbtFun_recov(gbt_fit.result, Qmat_fit, 
@@ -87,7 +87,7 @@ if (Sys.info()[1] == "Linux")
 }
 
 save(file = paste0(restorePath,
-                  '/result/real_traninig_', i_1,"_", i_2), 
+                  '/result/sreal_traninig_', i_1,"_", i_2), 
      list = c('sr_est.list',   'bt_est.list', 
               'gbt_est.list', 'sr1_est.list',
               'gbt_est.list2',

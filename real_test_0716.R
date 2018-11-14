@@ -27,6 +27,9 @@ i_1 = 1
 i_2 = 43
 sel_idx = which(BT_est_rank >= i_1 & BT_est_rank <= i_2)
 sel_idx.top = which(BT_est_rank >= 1 & BT_est_rank <= 13)
+plot(BT_est_rank,gBT2_est_rank, pch = 19, 
+     ylab = "ranks of gBT", xlab = "ranks of BT")
+ls()
 # library 
 library(MASS)
 library(igraph)
@@ -49,10 +52,11 @@ if (Sys.info()[1] == "Linux")
 }
 
 load(paste0(restorePath,
-            '/result/real_traninig_', i_1,"_", i_2))
+            '/result/sreal_traninig_', i_1,"_", i_2))
 # test procedure
 vmat1 = vmat2 = vmat3 = NULL
 i = 1
+sel_idx.top = 1:43
 for (i in 1:sim.num)
 {
   cat(i,'\n')
@@ -68,17 +72,17 @@ for (i in 1:sim.num)
                      p=43, sel_idx.top)  
   gbt_est = gbt_est.list[[i]]
   if (is.null(gbt_est)) next
-  gbt_est = gbt_est.list_1_43[[i]][sel_idx.top]
-  #bt_est = bt_est.list[[i]]
-  bt_est = bt_est.list_1_43[[i]][sel_idx.top]
-  #sr_est = sr_est.list[[i]]
-  sr_est = sr_est.list_1_43[[i]][sel_idx.top]
+  #gbt_est = gbt_est.list_1_43[[i]][sel_idx.top]
+  bt_est = rank(bt_est.list[[i]])
+  #bt_est = bt_est.list_1_43[[i]][sel_idx.top]
+  sr_est = sr_est.list[[i]]
+  #sr_est = sr_est.list_1_43[[i]][sel_idx.top]
   
-  #sr1_est = sr1_est.list[[i]]
-  sr1_est = sr1_est.list_1_43[[i]][sel_idx.top]
+  sr1_est = sr1_est.list[[i]]
+  #sr1_est = sr1_est.list_1_43[[i]][sel_idx.top]
   
-  #gbt2_est = gbt_est.list2[[i]]
-  gbt2_est = gbt_est.list2_1_43[[i]][sel_idx.top]
+  gbt2_est = gbt_est.list2[[i]]
+  #gbt2_est = gbt_est.list2_1_43[[i]][sel_idx.top]
   
   
   # v1 = evalFun_1(rdata[-s_idx,], bt_est, sel_idx)
@@ -106,9 +110,8 @@ for (i in 1:sim.num)
 # boxplot(vmat1[,-c(3)])
 # boxplot(vmat2[,-c(3)])
 boxplot(vmat3[,-c(3)])
+
 colMeans(vmat3)
-
-
 
 if (Sys.info()[1] == "Linux")
 {
@@ -125,26 +128,34 @@ if (Sys.info()[1] == "Linux")
 #                   '/result/real_test_', i_1,"_", i_2))
 
 
-colMeans(vmat3)
+
+rm(list = ls()) ; gc()
+
+if (Sys.info()[1] == "Linux")
+{
+  restorePath = '/home/jeon/Dropbox/GitHub/RankConsistency'
+} else {
+  restorePath = 'C:/Users/Jeon/Dropbox/GitHub/RankConsistency'
+}
 # 7m 69
 i_1 = 1; i_2 = 13
 load(file = paste0(restorePath, '/result/real_test_', i_1,"_", i_2))
-boxplot(vmat3[,-3], col='lightblue', 
-        names = c('BT', 'gBT', 'gSR','SR'),
+boxplot(vmat3[,c(5,1,4,2)], col='lightblue', 
+        names = c('SC', 'BT', 'gSC', 'gBT'),
         ylab = 'accuracy')
 colMeans(vmat3)
 
 i_1 = 14; i_2 = 43
 load(file = paste0(restorePath, '/result/real_test_', i_1,"_", i_2))
-boxplot(vmat3[,-3], col='lightblue', 
-        names = c('BT', 'gBT', 'gSR','SR'),
+boxplot(vmat3[,c(5,1,4,2)], col='lightblue', 
+        names = c('SC', 'BT', 'gSC', 'gBT'),
         ylab = 'accuracy')
 colMeans(vmat3)
 
 i_1 = 1; i_2 = 43
 load(file = paste0(restorePath, '/result/real_test_', i_1,"_", i_2))
-boxplot(vmat3, col='lightblue', 
-        names = c('BT', 'gBT', 'gSR','SR'),
+boxplot(vmat3[,c(4,1,3,2)], col='lightblue', 
+        names = c('SC', 'BT', 'gSC', 'gBT'),
         ylab = 'accuracy')
 colMeans(vmat3)
 #
@@ -155,7 +166,5 @@ boxplot(vmat3[,-3], col='lightblue',
 colMeans(vmat3)
 
 
-#boxplot(vmat3[,-3])
-colMeans(vmat3)
-order(vmat3[,1], decreasing = T)
+
 

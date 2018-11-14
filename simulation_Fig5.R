@@ -10,7 +10,7 @@ source('./lib/sim.R')
 source('./lib/real_lib.R')
 max.k = 10
 p = 10
-kn <- 5  ## d
+kn <- 7 ## d
 rn <- 0   ## n_s
 df = 1    ## degree of freedom
 counter = 1
@@ -22,7 +22,7 @@ cor.naive_list = list()
 cor.r_list = list()
 
 sim.iter = 200
-cor.bt = cor.gbt = cor.sr = c()
+cor.bt = cor.gbt = cor.sr = cor.sr1 = c()
 cut_var = 0
 ii = 1
   for ( ii in 1:sim.iter)
@@ -97,21 +97,37 @@ ii = 1
     
     bt_est <- btFun(Qmat_fit)
     sr_est <- srFun(Qmat_fit)
-    gbt_fit <- gbtFun(Qmat_fit, cut_v = cut_var/tn, 'balance')
+    sr1.result = sr1_fun(Qmat_fit)
+    sr1_est = gbtFun_recov(sr1.result, Qmat_fit, method='count',
+                           allowties = F)
+    
+    # Note !!
+    gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'balance')
     gbt_est = gbt_fit$gbt_est
+
     cor.bt[ii] <- cor(bt_est, lambda.vec, method = 'kendall')
     cor.gbt[ii] = cor(gbt_est, lambda.vec, method = 'kendall')
     cor.sr[ii] = cor(sr_est, lambda.vec, method = 'kendall')
+    cor.sr1[ii] = cor(sr1_est, lambda.vec, method = 'kendall')
   }
 
 
-png('./fig5_0805_3.PNG', width = 960, height = 960)  
-par( mai = c(4,4,4,2)/3)  
+# png('./fig5_0805_3.PNG', width = 960, height = 960)  
+par( mai = c(4,4,4,2)/3)
 exp.par = 3
   boxplot(cor.bt, cor.sr, cor.gbt, ylim = c(0.6,1),
-          names = c("BT", "SC", "gBT2"), 
-          col = 'lightblue', 
-          ylab = 'correlation', 
+          names = c("BT", "SC", "gBT2"),
+          col = 'lightblue',
+          ylab = 'correlation',
           cex.lab = exp.par,
           cex.axis = exp.par)
-dev.off()
+  exp.par = 1
+  boxplot(cor.bt, cor.sr1, cor.gbt, ylim = c(0.6,1),
+          names = c("BT", "SC", "gBT2"),
+          col = 'lightblue',
+          ylab = 'correlation',
+          cex.lab = exp.par,
+          cex.axis = exp.par)
+
+    
+# dev.off()

@@ -84,65 +84,12 @@ gbt_est_off = gbtFun_recov(gbt_fit$sc_list, Qmat_fit,
 gbt_est_off = rank(gbt_est_off[sel_idx])
 evalFun_3(Qmat_fit, gbt_est_off)
 
-Qmat_fit$Gmat_hat[setdiff(sel_idx,40),setdiff(sel_idx,40)]
-image(Qmat_fit$Gmat_hat[setdiff(sel_idx,40),-setdiff(sel_idx,40)])
-a = Qmat_fit$Gmat_hat[sel_idx,-sel_idx][order(gbt_est_off),]
-image(a)
+bt_est_off <- btFun(Qmat_fit)
+bt_est_off = rank(bt_est_off[sel_idx])
+evalFun_3(Qmat_fit, bt_est_off)
 
 
-#1:43
-Qmat_fit <-QmatFun(race_mat, num_vec, cut_var = 0,
-                   p=43, sel_idx = 1:43)  
-bt_est43 <- rank(btFun(Qmat_fit))
-bt_est43  = rank(bt_est43[sel_idx])
+sr_est_off <- srFun(Qmat_fit)
+sr_est_off = rank(sr_est_off[sel_idx])
+evalFun_3(Qmat_fit, sr_est_off)
 
-#bt_result <- make_result(bt_est)
-sr1.result = sr1_fun(Qmat_fit)
-sr1_est43 = gbtFun_recov(sr1.result, Qmat_fit, method='count',
-                       allowties = F)
-sr1_est43 = rank(sr1_est43[sel_idx])
-
-Qmat_fit <-QmatFun(race_mat, num_vec, cut_var = 1,
-                   p=43, sel_idx = 1:43)  
-gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'balance')
-gbt_fit_result = gbt_fit$sc_list
-gbt_est43 = gbtFun_recov(gbt_fit_result, Qmat_fit, 
-                       method = 'count', allowties = F)
-gbt_est43 = rank(gbt_est43[sel_idx])
-
-cbind(bt_est, bt_est43)
-cbind(sr1_est, sr1_est43)
-cbind(gbt_est, gbt_est43)
-
-
-evalFun_3_pair(bt_result, Qmat_fit, sel_idx)
-evalFun_3_pair(gbt_fit_result, Qmat_fit, sel_idx)
-evalFun_3_pair(sr1_fun(Qmat_fit), Qmat_fit, sel_idx )
-
-
-
-a1 = evalFun_4_pair(bt_result, Qmat_fit, sel_idx)
-a2 = evalFun_4_pair(gbt_fit_result, Qmat_fit, sel_idx)  
-a3 = evalFun_4_pair(sr1_fun(Qmat_fit), Qmat_fit, sel_idx)
-cbind(a1$v1,a2$v1,a3$v1)
-#evalFun_3_pair(sr2_fun(Qmat_fit), Qmat_fit)
-
-
-
-# evalFun_4_pair(bt_result, Qmat_fit)
-# evalFun_4_pair(gbt_fit_result, Qmat_fit)  
-sr1_result = sr1_fun(Qmat_fit)
-# evalFun_4_pair(sr1_fun(Qmat_fit), Qmat_fit)
-# 
-
-
-b1 = bt_result[which(bt_result[,2]==43),]
-b2 = gbt_fit_result[which(gbt_fit_result[,2]==43),]
-b3 = sr_result[which(sr_result[,2]==43),]
-
-### check the result of car43
-cbind(b1[,1:3],b2[,3],b3[,3])
-
-# car 43 vs 4, 7, 8, 12, 13, 19, 20, 38
-
-# car 43 vs car 4
