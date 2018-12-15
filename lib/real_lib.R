@@ -140,6 +140,30 @@ btFun<- function(Qmat_fit)
   return( naive_est )
 }
 
+## 
+gbtFun_ver01 <- function(Qmat_fit, a)
+{
+  Qpmat = Qmat_fit$Qpmat  
+  Gmat_hat = Qmat_fit$Gmat_hat
+  x = Qmat_fit$x
+  y = Qmat_fit$y
+  p = ncol(Qpmat)
+  zero.idx = (Qpmat == 0)
+  bmat = (1/Qpmat)^a ; bmat[zero.idx] = 0
+  wmat = bmat*Qpmat*Gmat_hat
+  wmat = t(wmat)
+  wvec = wmat[ - (1 + ( 0:(p-1) ) *(p+1))]  ## w_jj 제거 
+  # fit glmnet
+  fit <- glmnet(x, y, family = 'binomial',
+                intercept = FALSE, weights = wvec, lambda = 0,
+                standardize = F)
+  est = c(fit$beta[,1],0) ## lambda_43 추가 
+  naive_est <- est
+  names(naive_est) = colnames(Qpmat)
+  return( naive_est )
+}
+
+
 # Fit the generalized Bradley model with cvec[k] (thresholding parameter)
 gbtFun <-function(Qmat_fit, cut_v=0, ctype = 'boost')
 {
