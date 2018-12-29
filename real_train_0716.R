@@ -57,12 +57,16 @@ for (i in 1:sim.num)
 
   Qmat_fit <-QmatFun(race_mat, num_vec, cut_var = 1,
                      p=43, sel_idx)  
-  gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'cbalance')
+  gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'none', a = 1)
+  gbt_fit2 <- gbtFun(Qmat_fit, cut_v = 0, 'none', a = 0)  
   if (is.null(gbt_fit$gbt_est)) next
   gbt_fit.result = gbt_fit$sc_list
+  gbt_fit.result2 = gbt_fit2$sc_list  
   gbt_est = gbtFun_recov(gbt_fit.result, Qmat_fit, 
                          method = 'count', allowties = F)
-
+  gbt_est2 = gbtFun_recov(gbt_fit.result2, Qmat_fit, 
+                         method = 'count', allowties = F)
+  
   sr_result.list[[i]] = sr_result
   bt_result.list[[i]] = bt_result
   gbt_result.list[[i]] = gbt_fit.result

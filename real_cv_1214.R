@@ -81,3 +81,4 @@ for (i in 101:200)
   
 colMeans(vmat)
 
+# 

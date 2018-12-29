@@ -165,7 +165,7 @@ gbtFun_ver01 <- function(Qmat_fit, a)
 
 
 # Fit the generalized Bradley model with cvec[k] (thresholding parameter)
-gbtFun <-function(Qmat_fit, cut_v=0, ctype = 'boost')
+gbtFun <-function(Qmat_fit, cut_v=0, ctype = 'boost', a)
 {
   Qmat = Qmat_fit$Qmat
   Qpmat = Qmat_fit$Qpmat
@@ -202,6 +202,7 @@ gbtFun <-function(Qmat_fit, cut_v=0, ctype = 'boost')
       idx2  =  setdiff( idx1, c(i1, i2))
       
       nvec3 = (nvec1[-idx1]+nvec2[-idx1])/2
+      nvec3 = nvec3^a
       Qpmat.c2[i1,-idx1] = Qpmat.c2[i2,-idx1] = nvec3
       
       if (length(idx2)>0)  Qpmat.c2[i1,idx2] =  Qpmat.c2[i2,idx2] = 0
@@ -255,6 +256,7 @@ gbtFun <-function(Qmat_fit, cut_v=0, ctype = 'boost')
         }
       }
 
+      
       if (ctype == 'boost')
       {
         a = max(Qpmat.c2[c(i1,i2),])
