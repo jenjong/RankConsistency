@@ -137,7 +137,9 @@ i_1 = 1; i_2 = 13
 load(file = paste0(restorePath, '/result/real_test_', i_1,"_", i_2))
 boxplot(vmat3[,c(5,1,4,2)], col='lightblue', 
         names = c('SC', 'BT', 'gSC', 'gBT'),
-        ylab = 'accuracy')
+        ylab = 'accuracy', ylim = c(0.47,0.69),
+        cex.lab = 1.5, cex.axis = 1.5 )
+abline(h = 0.6, col = 'red', lwd = 2)
 colMeans(vmat3)[c(5,1,4,2)]
 
 
@@ -161,7 +163,9 @@ colMeans(vmat3)
 load(file = paste0(restorePath, '/result/real_test_full'))
 boxplot(vmat3[,c(5,1,4,2)], col='lightblue', 
         names = c('SC', 'BT', 'gSC', 'gBT'),
-        ylab = 'accuracy')
+        ylab = 'accuracy',ylim = c(0.47,0.69),
+        cex.lab = 1.5, cex.axis = 1.5 )
+abline(h = 0.6, col = 'red', lwd = 2)
 colMeans(vmat3)[c(5,1,4,2)]
 
 
