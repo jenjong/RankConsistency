@@ -13,7 +13,7 @@ if (Sys.info()[1] == "Linux")
   restorePath = 'C:/Users/Jeon/Dropbox/GitHub/RankConsistency'
 }
 # choose the training set
-i_1 = 1
+i_1 = 14
 i_2 = 43
 load(paste0(restorePath,
             '/result/real_traninig_', i_1,"_", i_2))
