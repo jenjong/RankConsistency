@@ -1,115 +1,279 @@
+# inverstigation of asymptotic variances
 rm (list =ls()); gc()
+setwd("C:/Users/Jeon/Documents/GitHub/RankConsistency")
 library(e1071)
 library(quadprog)
-# inverstigation of asymptotic variances
-setwd("C:/Users/Jeon/Documents/GitHub/RankConsistency")
-source("./lib/lib_rank.r")
+library(MASS)
+library(igraph)
+library(glmnet)
+source('./lib/car_lib.R')
+source('./lib/lib_rank.R')
+source('./lib/sim.R')
+source('./lib/real_lib.R')
 
-# population minimizer
-    n=20000 ; df = 1
+# set parameters in simulation
+    df = 1 ;     alpha = 10
     lambda.vec = c(1.2,1.1,0.6,0)*4
+# population minimizer    
     p = length(lambda.vec)
-    alpha.vec = 20
-    num.iter = 100
-    beta.mat1 = beta.mat2  = NULL
-    rank.mat1 = rank.mat2 = NULL 
-    set.seed(1)
-    k = 1
-    for (k in 1:length(alpha.vec))
-    {
-    alpha = alpha.vec[k]
-    tmp.mat1 = tmp.mat2 = NULL
     X = NULL
     pij = c()
     true.prob = c()
     idx = 1
-
-          for (i in 1:(p-1) )
+    
+    Gmat_hat = Qmat = matrix(0,p,p)
+    for (i in 1:(p-1) )
+    {
+          for (j in (i+1):p)
           {
-                for (j in (i+1):p)
-                {
-                un = n
-                if ( (i == 2 & j == 3) ) un = n*alpha
-                if ( (i == 1 & j == 4) ) un = n*alpha
-                if ((i==3) & (j==4)) un=n*alpha
-                tmp.vec = rep(0,p)
-                tmp.vec[i] = 1 ; tmp.vec[j] = -1
-                X = rbind(X, tmp.vec)
-                true.prob[idx] = pt((lambda.vec[i]- lambda.vec[j])/2, df = 1)            
-                pij[idx] = un
-                idx = idx + 1
-                }
+          un = 1
+          if ( (i == 2 & j == 3) ) un = alpha
+          if ( (i == 1 & j == 4) ) un = alpha
+          if ((i==3) & (j==4)) un = alpha
+          tmp.vec = rep(0,p)
+          tmp.vec[i] = 1 ; tmp.vec[j] = -1
+          X = rbind(X, tmp.vec)
+          v = pt((lambda.vec[i]- lambda.vec[j])/2, df = 1)            
+          true.prob[idx] = v
+          Gmat_hat[i,j] = v 
+          Gmat_hat[j,i] = 1-v 
+          Qmat[i,j] = Qmat[j,i] = un
+          pij[idx] = un
+          idx = idx + 1
           }
-        # orginal Bradley-Terry model
+    }
+        # Bradley-Terry model (old version)
         X = X[,-p] ; pij = pij/ sum(pij)
         beta.vec = IWLS.ridge(X,true.prob,pij,accuracy=10e-10,maxitration=200)
         beta.vec = c(beta.vec,0)
-        tmp.mat1 = rbind(tmp.mat1,beta.vec)
+        
+        # Bradley-Terry model (new version)
+            # set up Qpmat 
+            Qpmat = Qmat/sum(Qmat)
+            
+            # set up (x,y) : complete comparisons
+            x = matrix(0, p*(p-1), p)
+            y = rep(0, p*(p-1) )
+            ix = 1
+            for (i in 1:p)
+            {
+              for (j in 1:p)
+              {
+                if (i == j) next
+                jx1 = min(i,j)
+                jx2 = max(i,j)
+                x[ix,jx1] = 1; x[ix,jx2] = -1
+                if (i<j) y[ix] = 1
+                ix = ix + 1
+              }
+            }
+            x = x[,-p]
+            
+            # set up Qmat_fit
+            Qmat_fit = list()
+            Qmat_fit$Qpmat = Qpmat
+            Qmat_fit$Gmat_hat = Gmat_hat
+            Qmat_fit$x = x
+            Qmat_fit$y = y
+            
+            # fit the BT
+            beta_tilde = btFun(Qmat_fit)
+            beta_tilde
+# BT estimator
+# diagal selection:  (1 + ( 0:(p-1) )*(p+1))
+# Hessian 
+            # estimated probability
+            est_prob = matrix(0,p,p)
+            for (i in 1:p)
+            {
+              for (j in 1:p)
+              {
+                if (i==j) next
+                v = exp(beta_tilde[i]-beta_tilde[j])
+                est_prob[i,j] = v/(1+v)
+              }
+            }
+            
+            # Hessian
+            H = matrix(0,p-1,p-1)
+              # diag
+              for ( i in 1:(p-1))
+              {
+                H[i,i] = sum(est_prob[i,-i]*(1-est_prob[i,-i])*Qpmat[i,-i])
+              }
+              # off-diag
+              for ( i in 1:(p-1))
+              {
+                for (j in 1:(p-1))
+                {
+                  if (i==j) next
+                  H[i,j] = - est_prob[i,j]*(1-est_prob[i,j])*Qpmat[i,j]  
+                }
+              }
+            # Asymptotic variance 
+            FH = solve(H)
+            (FH[1,1] + FH[2,2] - 2*FH[1,2])
+            beta_tilde[1] - beta_tilde[2]
 
-        beta.vec = pIWLS(X,true.prob,pij,accuracy=10e-10,maxitration=200)
-        tmp.mat2 = rbind(tmp.mat2,beta.vec)
+# gBT estimator
+            # set up Qpmat 
+            Qpmat = matrix(1,p,p) ; diag(Qpmat) = 0
+            Qpmat = Qpmat/sum(Qpmat)
+            # set up (x,y) : complete comparisons
+            # already done
 
-#        rownames(X) = NULL
-#        m = svm(mX,my, kernel='linear', scale = F, cost = 0.5)
-#        w <- t(m$coefs) %*% X[m$index,]
-#        w = c(w,0)
-#        w
-#        cat(beta.vec,'\n')
-        }
+            # set up Qmat_fit
+            Qmat_fit = list()
+            Qmat_fit$Qpmat = Qpmat
+            Qmat_fit$Gmat_hat = Gmat_hat
+            Qmat_fit$x = x
+            Qmat_fit$y = y
+            
+            # fit the gBT
+            beta_tilde = btFun(Qmat_fit)        
+                        
+            # Hessian 
+            # estimated probability
+            est_prob = matrix(0,p,p)
+            for (i in 1:p)
+            {
+              for (j in 1:p)
+              {
+                if (i==j) next
+                v = exp(beta_tilde[i]-beta_tilde[j])
+                est_prob[i,j] = v/(1+v)
+              }
+            }
+            
+            # Hessian
+            H = matrix(0,p-1,p-1)
+            # diag
+            for ( i in 1:(p-1))
+            {
+              H[i,i] = sum(est_prob[i,-i]*(1-est_prob[i,-i])*Qpmat[i,-i])
+            }
+            # off-diag
+            for ( i in 1:(p-1))
+            {
+              for (j in 1:(p-1))
+              {
+                if (i==j) next
+                H[i,j] = - est_prob[i,j]*(1-est_prob[i,j])*Qpmat[i,j]  
+              }
+            }
+            # Asymptotic variance 
+            FH = solve(H)
+            (FH[1,1] + FH[2,2] - 2*FH[1,2])
+            beta_tilde[1] - beta_tilde[2]
+            
+            
+            
+# (single) numerical simulation : compute bias for each sample size   
+            # set parameters in simulation
+            n = 20
+            # sample generation
+            Gmat_hat = Qmat = matrix(0,p,p)
+            for (i in 1:(p-1) )
+            {
+              for (j in (i+1):p)
+              {
+                un = n
+                if ( (i == 2 & j == 3) ) un = alpha*n
+                if ( (i == 1 & j == 4) ) un = alpha*n
+                if ((i==3) & (j==4)) un = alpha*n
+                v = mean( ( (rt(un,df) + lambda.vec[i]) - 
+                                           (rt(un,df) + lambda.vec[j])  ) >0 )                
+                Gmat_hat[i,j] = v 
+                Gmat_hat[j,i] = 1-v 
+                Qmat[i,j] = Qmat[j,i] = un
+              }
+            }
+            # set an intial parameter for btFUN
+            Qpmat = Qmat/sum(Qmat)
+            Qmat_fit$Qpmat = Qpmat
+            Qmat_fit$Gmat_hat = Gmat_hat
+            Qmat_fit$x = x
+            Qmat_fit$y = y
+            # fit the BT
+            beta_hat = btFun(Qmat_fit)
+            
 
-    beta.mat1 = rbind(beta.mat1, colMeans(tmp.mat1))
-    beta.mat2 = rbind(beta.mat2, colMeans(tmp.mat2))
-    rank.mat1 = rbind(rank.mat1, colMeans(rank.fun(tmp.mat1,p)))
-    rank.mat2 = rbind(rank.mat2, colMeans(rank.fun(tmp.mat2,p)))
-    }
+                        
+            
+# numerical simulations : compute bias for each sample size               
+            
+            n = 20
+            iter = 1
+            iter.num = 1000
+            beta_mat = NULL
+            
+            for (iter in 1:iter.num)
+            {
+              Gmat_hat = Qmat = matrix(0,p,p)
+              for (i in 1:(p-1) )
+              {
+                for (j in (i+1):p)
+                {
+                  un = n
+                  if ( (i == 2 & j == 3) ) un = alpha*n
+                  if ( (i == 1 & j == 4) ) un = alpha*n
+                  if ((i==3) & (j==4)) un = alpha*n
+                  v = mean( ( (rt(un,df) + lambda.vec[i]) - 
+                                (rt(un,df) + lambda.vec[j])  ) >0 )                
+                  Gmat_hat[i,j] = v 
+                  Gmat_hat[j,i] = 1-v 
+                  Qmat[i,j] = Qmat[j,i] = un
+                }
+              }
+              # set an intial parameter for btFUN
+              Qpmat = Qmat/sum(Qmat)
+              Qmat_fit$Qpmat = Qpmat
+              Qmat_fit$Gmat_hat = Gmat_hat
+              Qmat_fit$x = x
+              Qmat_fit$y = y
+              # fit the BT
+              beta_hat = btFun(Qmat_fit)  
+              beta_mat = rbind(beta_mat, beta_hat)
+            }
+            boxplot(beta_mat[,1] - beta_mat[,2])
+            abline(h = 0)
 
-  # setwd('D:\\JJJ\\ranking problem\\Jeon-2014-03-05 order consistency\\rank-consistenmcy_ver04-JJ')
-  # jpeg(filename = "Rplot1.jpg")
-  # plot(alpha.vec, beta.mat1[,1], type = 'b', lty = 1, ylim = c(0,3),
-  #      ylab = expression(beta), xlab = expression(alpha), main = 'mean of estimated coefficients',
-  #      pch = 1)
-  # lines(alpha.vec, beta.mat1[,2], lty = 2,type = 'b', pch = 2)
-  # lines(alpha.vec, beta.mat1[,3], lty = 3, type = 'b',pch = 3)
-  # lines(alpha.vec, beta.mat1[,4], lty = 4, type = 'b',pch = 4)
-  # dev.off()
-  # jpeg(filename = "Rplot2.jpg")
-  # plot(alpha.vec, beta.mat2[,1], type = 'b', lty = 1, ylim = c(0,3),
-  #      ylab = expression(beta), xlab = expression(alpha), main = 'mean of estimated coefficients',
-  #      pch = 1)
-  # lines(alpha.vec, beta.mat2[,2], lty = 2,type = 'b', pch = 2)
-  # lines(alpha.vec, beta.mat2[,3], lty = 3, type = 'b',pch = 3)
-  # lines(alpha.vec, beta.mat2[,4], lty = 4, type = 'b',pch = 4)
-  # dev.off()
-    
-  png(filename = "Rplot3.png")
-  plot(alpha.vec, rank.mat1[,1], type = 'b', lty = 1, ylim = c(0,4.2),
-       ylab = "averages of estimated ranks", xlab = expression(gamma), 
-       main = 'BT',
-       pch = 20, cex.lab = 1.5, cex.axis = 1.3)
-  lines(alpha.vec, rank.mat1[,2], lty = 1,type = 'b', pch = 2)
-  lines(alpha.vec, rank.mat1[,3], lty = 1, type = 'b',pch = 3)
-  lines(alpha.vec, rank.mat1[,4], lty = 1, type = 'b',pch = 4)
-  legend('bottomright', legend = c(expression(paste(lambda[1], "     ")),
-                                   expression(lambda[2]),
-                                   expression(lambda[3]),
-                                   expression(lambda[4])),
-         pch = c(20, 2,3,4), lty = c(1,1,1,1) )
-  
-  
-  dev.off()
-  
-  png(filename = "Rplot4.png")
-  plot(alpha.vec, rank.mat2[,1], type = 'b', lty = 1, ylim = c(0,4.2),
-       ylab = "averages of estimated ranks", xlab = expression(gamma), 
-       main = 'gBT',
-       pch = 20, cex.lab = 1.5, cex.axis = 1.3)
-  lines(alpha.vec, rank.mat2[,2], lty = 1,type = 'b', pch = 2)
-  lines(alpha.vec, rank.mat2[,3], lty = 1, type = 'b',pch = 3)
-  lines(alpha.vec, rank.mat2[,4], lty = 1, type = 'b',pch = 4)
-  legend('bottomright', legend = c(expression(paste(lambda[1], "     ")),
-                                   expression(lambda[2]),
-                                   expression(lambda[3]),
-                                   expression(lambda[4])),
-         pch = c(20, 2,3,4), lty = c(1,1,1,1) )
-  
-  dev.off()
+            # numerical simulations : compute bias for each sample size               
+            
+            n = 20
+            iter = 1
+            iter.num = 1000
+            beta_mat = NULL
+            
+            for (iter in 1:iter.num)
+            {
+              Gmat_hat = Qmat = matrix(0,p,p)
+              for (i in 1:(p-1) )
+              {
+                for (j in (i+1):p)
+                {
+                  un = n
+                  if ( (i == 2 & j == 3) ) un = alpha*n
+                  if ( (i == 1 & j == 4) ) un = alpha*n
+                  if ((i==3) & (j==4)) un = alpha*n
+                  v = mean( ( (rt(un,df) + lambda.vec[i]) - 
+                                (rt(un,df) + lambda.vec[j])  ) >0 )                
+                  Gmat_hat[i,j] = v 
+                  Gmat_hat[j,i] = 1-v 
+                  Qmat[i,j] = Qmat[j,i] = un
+                }
+              }
+              # set an intial parameter for btFUN
+              Qpmat = matrix(1,p,p)
+              Qmat_fit$Qpmat = Qpmat
+              Qmat_fit$Gmat_hat = Gmat_hat
+              Qmat_fit$x = x
+              Qmat_fit$y = y
+              # fit the BT
+              beta_hat = btFun(Qmat_fit)  
+              beta_mat = rbind(beta_mat, beta_hat)
+            }
+            boxplot(beta_mat[,1] - beta_mat[,2])
+            abline(h = 0)            
+            
+            
