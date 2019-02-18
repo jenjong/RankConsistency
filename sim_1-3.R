@@ -21,7 +21,7 @@ source('./lib/real_lib.R')
     true.prob = c()
     idx = 1
     
-    Gmat_hat = Qmat = matrix(0,p,p)
+    Gmat = Qmat = matrix(0,p,p)
     for (i in 1:(p-1) )
     {
           for (j in (i+1):p)
@@ -35,21 +35,21 @@ source('./lib/real_lib.R')
           X = rbind(X, tmp.vec)
           v = pt((lambda.vec[i]- lambda.vec[j])/2, df = 1)            
           true.prob[idx] = v
-          Gmat_hat[i,j] = v 
-          Gmat_hat[j,i] = 1-v 
+          Gmat[i,j] = v 
+          Gmat[j,i] = 1-v 
           Qmat[i,j] = Qmat[j,i] = un
           pij[idx] = un
           idx = idx + 1
           }
     }
         # Bradley-Terry model (old version)
-        X = X[,-p] ; pij = pij/ sum(pij)
-        beta.vec = IWLS.ridge(X,true.prob,pij,accuracy=10e-10,maxitration=200)
-        beta.vec = c(beta.vec,0)
+        # X = X[,-p] ; pij = pij/ sum(pij)
+        # beta.vec = IWLS.ridge(X,true.prob,pij,accuracy=10e-10,maxitration=200)
+        # beta.vec = c(beta.vec,0)
         
         # Bradley-Terry model (new version)
             # set up Qpmat 
-            Qpmat = Qmat/sum(Qmat)
+            Qpmat = Qmat/sum(Qmat)*2
             
             # set up (x,y) : complete comparisons
             x = matrix(0, p*(p-1), p)
@@ -72,7 +72,7 @@ source('./lib/real_lib.R')
             # set up Qmat_fit
             Qmat_fit = list()
             Qmat_fit$Qpmat = Qpmat
-            Qmat_fit$Gmat_hat = Gmat_hat
+            Qmat_fit$Gmat_hat = Gmat
             Qmat_fit$x = x
             Qmat_fit$y = y
             
@@ -81,7 +81,26 @@ source('./lib/real_lib.R')
             beta_tilde
 # BT estimator
 # diagal selection:  (1 + ( 0:(p-1) )*(p+1))
-# Hessian 
+# asymptotic variance
+            # true probability
+            true_prob = Gmat
+            # variance of score function
+            v_s = matrix(0,p-1,p-1)
+              # diag
+              for ( i in 1:(p-1))
+              {
+                v_s[i,i] = sum(true_prob[i,-i]*(1-true_prob[i,-i])*Qpmat[i,-i])
+              }
+              # off-diag
+              for ( i in 1:(p-1))
+              {
+                for (j in 1:(p-1))
+                {
+                  if (i==j) next
+                  v_s[i,j] = - true_prob[i,j]*(1-true_prob[i,j])*Qpmat[i,j]  
+                }
+              }
+
             # estimated probability
             est_prob = matrix(0,p,p)
             for (i in 1:p)
@@ -111,28 +130,49 @@ source('./lib/real_lib.R')
                 }
               }
             # Asymptotic variance 
-            FH = solve(H)
+            FH = solve(H)%*%v_s%*%solve(H)
             (FH[1,1] + FH[2,2] - 2*FH[1,2])
             beta_tilde[1] - beta_tilde[2]
 
 # gBT estimator
-            # set up Qpmat 
-            Qpmat = matrix(1,p,p) ; diag(Qpmat) = 0
-            Qpmat = Qpmat/sum(Qpmat)
+            # set up weight mat 
+            gamma.v = 0.5
+            wmat = (1/Qpmat)^gamma.v ; diag(wmat) = 0
             # set up (x,y) : complete comparisons
             # already done
 
             # set up Qmat_fit
             Qmat_fit = list()
-            Qmat_fit$Qpmat = Qpmat
-            Qmat_fit$Gmat_hat = Gmat_hat
+            Qmat_fit$Qpmat = Qpmat*wmat
+            Qmat_fit$Gmat_hat = Gmat
             Qmat_fit$x = x
             Qmat_fit$y = y
             
             # fit the gBT
             beta_tilde = btFun(Qmat_fit)        
-                        
-            # Hessian 
+            beta_tilde 
+            
+            # true probability
+            true_prob = Gmat
+            # variance of score function
+            v_s = matrix(0,p-1,p-1)
+            # diag
+            for ( i in 1:(p-1))
+            {
+              v_s[i,i] = sum(true_prob[i,-i]*(1-true_prob[i,-i])*Qpmat[i,-i]*
+                               wmat[i,-i]^2)
+            }
+            # off-diag
+            for ( i in 1:(p-1))
+            {
+              for (j in 1:(p-1))
+              {
+                if (i==j) next
+                v_s[i,j] = - true_prob[i,j]*(1-true_prob[i,j])*Qpmat[i,j]*
+                  wmat[i,j]^2
+              }
+            }
+            
             # estimated probability
             est_prob = matrix(0,p,p)
             for (i in 1:p)
@@ -150,7 +190,8 @@ source('./lib/real_lib.R')
             # diag
             for ( i in 1:(p-1))
             {
-              H[i,i] = sum(est_prob[i,-i]*(1-est_prob[i,-i])*Qpmat[i,-i])
+              H[i,i] = sum(est_prob[i,-i]*(1-est_prob[i,-i])*Qpmat[i,-i]*
+                             wmat[i,-i])
             }
             # off-diag
             for ( i in 1:(p-1))
@@ -158,14 +199,14 @@ source('./lib/real_lib.R')
               for (j in 1:(p-1))
               {
                 if (i==j) next
-                H[i,j] = - est_prob[i,j]*(1-est_prob[i,j])*Qpmat[i,j]  
+                H[i,j] = - est_prob[i,j]*(1-est_prob[i,j])*Qpmat[i,j]*
+                  wmat[i,j]
               }
             }
             # Asymptotic variance 
-            FH = solve(H)
+            FH = solve(H)%*%v_s%*%solve(H)
             (FH[1,1] + FH[2,2] - 2*FH[1,2])
             beta_tilde[1] - beta_tilde[2]
-            
             
             
 # (single) numerical simulation : compute bias for each sample size   
