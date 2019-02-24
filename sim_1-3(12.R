@@ -1,7 +1,5 @@
 # population minimizer
 # inverstigation of asymptotic variances
-# result: heat map of covariance matrix
-#         heat map of rank consistency    
 rm (list =ls()); gc()
 setwd("C:/Users/Jeon/Documents/GitHub/RankConsistency")
 library(e1071)
@@ -17,11 +15,11 @@ f = function(x,y,df)  pt(x-y, df = df)*dt(y,df = df)
 
 
 # set parameters in simulation
-nvec = seq(5,500,by = 5)
+nvec = seq(25,500,by = 5)
 gamma.vec = seq(0,1,by = 0.01)
 df = 1;     alpha = 10
-lambda.vec = c(1.2,1.1,0.6,0)*4
-#lambda.vec = c(1.2,0.8,0.6,0)*4
+#lambda.vec = c(1.2,1.1,0.6,0)*4
+lambda.vec = c(1.2,0.8,0.6,0)*4
 pop_list = list()
 pop_beta_mat = NULL
 rankcons.mat1 = rankcons.mat2 = rankcons.mat3 = NULL
@@ -186,7 +184,6 @@ for (iter in 1:length(gamma.vec))
 }
 
 # figure for Prob(lambda_j > lambda_k)
-# 600 times 700
   rankcons.mat = rankcons.mat1
   rownames(rankcons.mat) = NULL
   colnames(rankcons.mat) = nvec
@@ -201,77 +198,37 @@ for (iter in 1:length(gamma.vec))
   v2 <- fig + geom_tile() +  geom_contour(colour = "white")  + 
     scale_fill_gradientn(colours = heat.colors(500), name='prob') 
   v2 + xlab("n") + ylab("alpha") +
-    theme(axis.text=element_text(size=24),
-          axis.title=element_text(size=24,face="bold"),
-          legend.title=element_text(size=24),
-          legend.text=element_text(size=24))
+    theme(axis.text=element_text(size=12),
+          axis.title=element_text(size=14,face="bold"),
+          legend.title=element_text(size=14),
+          legend.text=element_text(size=12))
 
-# computation of Frobenius norm of variance
-  n = 10
-  sqrt(sum(pop_list[[1]]$cov^2))
-  sqrt(sum(pop_list[[101]]$cov^2))
-  
-  
-  sum((A%*%pop_list[[1]]$cov^2)%*%t(A))
-  sum(A%*%pop_list[[101]]$cov^2%*%t(A))
 
-# figure (heat map) for the entire rank consistency
-# size: 800 times 600  
+# figure for the entire rank consistency
   set.seed(1)
-  x = matrix(rnorm(3e+5),,3)
-  
-  A = matrix(c(1,-1,0,
-               0,1,-1,
-               0,0,1), 3, 3, byrow = T)
-  prob.mat = NULL
-  for (n in nvec)
+  x = matrix(rnorm(3e+6),,3)
+  n = 125
+  prob = c()
+  for (iter in 1:length(gamma.vec))
   {
-    cat(n,'\n')
-    prob = c()
-    for (iter in 1:length(gamma.vec))
-    {
-      pop_min = pop_list[[iter]]
-      m = pop_min$est[-4]
-      v = A%*%pop_min$cov%*%t(A)/n
-      #v = pop_min$cov/n
-      fit = svd(v)
-      #A matrix
-      #A = fit$u%*%diag(sqrt(fit$d))
-      #t(A) matrix
-      At = diag(sqrt(fit$d))%*%t(fit$u)
-      Ax = x%*%At
-      #Ax = Ax + rep(m, each = nrow(Ax))
-      Ax = Ax + rep(drop(A%*%m), each = nrow(Ax))
-      #idx =(Ax[,1] > Ax[,2]) &  (Ax[,2] > Ax[,3]) & (Ax[,3]>0)
-      Ax = Ax>0
-      prob[iter] = mean(rowSums(Ax) == 3)
-      #idx =(Ax[,1] > 0) &  (Ax[,2] > 0) & (Ax[,3]>0)
-      #prob[iter] = mean(idx)
-    }
-    prob.mat = cbind(prob.mat, prob)
+    pop_min = pop_list[[iter]]
+    m = pop_min$est[-4]
+    v = pop_min$cov/n
+    fit = svd(v)
+    #A matrix
+    #A = fit$u%*%diag(sqrt(fit$d))
+    #t(A) matrix
+    At = diag(sqrt(fit$d))%*%t(fit$u)
+    Ax = x%*%At
+    Ax = Ax + rep(m, each = nrow(Ax))
+    idx =(Ax[,1] > Ax[,2]) &  (Ax[,2] > Ax[,3]) & (Ax[,3]>0)
+    prob[iter] = mean(idx)
   }
-
+  plot(prob)
   
-  rankcons.mat = prob.mat
-  rownames(rankcons.mat) = NULL
-  colnames(rankcons.mat) = nvec
-  rownames(rankcons.mat) = gamma.vec
-  library(ggplot2)
-  library(reshape)
-  rmat = rankcons.mat
-  #lim.v = 0.3
-  #rmat[rmat<=lim.v]  = lim.v
-  fig_data = melt(rmat)
-  fig <- ggplot(fig_data , aes(x = X2, y = X1, z = value,fill = value))
-  v2 <- fig + geom_tile() +  geom_contour(colour = "white")  + 
-    scale_fill_gradientn(colours = heat.colors(500), name='prob') 
-  v2 + xlab("n") + ylab("alpha") +
-    theme(axis.text=element_text(size=28),
-          axis.title=element_text(size=32,face="bold"),
-          legend.text=element_text(size=28),
-          legend.title=element_text(size=32))
-  
-    
+plot(rmat[,10]) ; abline(h = 0.5)
+which.max(rmat[,10])
+head(pop_beta_mat)
 
 # image(x = gamma.vec, y = nvec, rankcons.mat, ylab = 'n', xlab = 'gamma',
 #       useRaster = TRUE)

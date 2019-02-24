@@ -137,6 +137,29 @@ gen.Gmathat <- function(Gmat, Qmat)
   return( Gmat.hat )
 }
 
+# simulation code in Gmat
+gen.Gmat_obs <- function(Gmat, Qmat)
+{
+  p = ncol(Gmat)
+  gmat.prob<-c(Gmat)
+  gmat.num <- c(Qmat)
+  gmat.gen<- rep(0, length(gmat.num))
+  for (i in 1:length(gmat.num))
+  {
+    gmat.gen[i] <- rbinom(n = 1, size = gmat.num[i], prob = gmat.prob[i])
+  }
+  
+  Gmat.hat <- matrix(gmat.gen,p,p)
+  Gmat.hat[lower.tri(Gmat.hat, diag = T)] = 0
+  tmp <- Qmat - t(Gmat.hat)
+  Gmat.hat[lower.tri(Qmat)]<- tmp[lower.tri(Qmat)]
+  Gmat.hat <- Gmat.hat
+  Gmat.hat[!is.finite(Gmat.hat)] = 0
+  return( Gmat.hat )
+}
+
+
+
 #5 naive est
 naive.fun <- function(Qpmat, Gmat.hat,x,y,p)
 {
@@ -324,7 +347,8 @@ cons.rank<- function(tmp)
 ## cv code 
 
 # make cv_mat
-# 
+# tn is not defined
+# Gmat_obs is win or lose matrix
 cv_mat_fun <- function(Gmat_obs, Qmat, k_fold) 
 {
   cv_mat = matrix(0, tn, 4)  
