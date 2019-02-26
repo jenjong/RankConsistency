@@ -19,16 +19,16 @@ f = function(x,y,df)  pt(x-y, df = df)*dt(y,df = df)
 # set parameters in simulation
 nvec = seq(25,500,by = 5)
 gamma.vec = seq(0,1,by = 0.25)
-df = 1 ;     alpha = 10
-#lambda.vec = c(1.2,1.1,0.6,0)*4
-lambda.vec = c(1.2,0.8,0.6,0)*4
+df = 1 ;     alpha = 5
+lambda.vec = c(1.2,1.1,0.6,0)*4
+#lambda.vec = c(1.2,0.8,0.6,0)*4
 pop_list = list()
 pop_beta_mat = NULL
 rankcons.mat1 = rankcons.mat2 = rankcons.mat3 = NULL
 cov.list = list()
 p = length(lambda.vec)
 Gmat = Qmat = matrix(0,p,p)
-kn = 6
+kn = 3
 k_fold = 5
 for (i in 1:(p-1) )
 {
