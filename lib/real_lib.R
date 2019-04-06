@@ -165,7 +165,7 @@ gbtFun_ver01 <- function(Qmat_fit, a)
 
 
 # Fit the generalized Bradley model with cvec[k] (thresholding parameter)
-gbtFun <-function(Qmat_fit, cut_v=0, ctype = 'boost', a)
+gbtFun <-function(Qmat_fit, cut_v=0, ctype = NULL, a = 1)
 {
   Qmat = Qmat_fit$Qmat
   Qpmat = Qmat_fit$Qpmat

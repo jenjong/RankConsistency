@@ -17,7 +17,7 @@ counter = 1
 source('./lib/exe-2.R')
 # here we already select the two pairs
 dmat[c(11, 81)] = 0
-tn = 50000
+tn = 500
 cor.naive_list = list()
 cor.r_list = list()
 
@@ -102,7 +102,7 @@ ii = 1
                            allowties = F)
     
     # Note !!
-    gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, 'balance')
+    gbt_fit <- gbtFun(Qmat_fit, cut_v = 0, ctype = "none")
     gbt_est = gbt_fit$gbt_est
 
     cor.bt[ii] <- cor(bt_est, lambda.vec, method = 'kendall')
@@ -122,8 +122,8 @@ exp.par = 3
           cex.lab = exp.par,
           cex.axis = exp.par)
   exp.par = 1
-  boxplot(cor.bt, cor.sr1, cor.gbt, ylim = c(0.6,1),
-          names = c("BT", "SC", "gBT2"),
+  boxplot(cor.bt, cor.sr, cor.sr1, cor.gbt, ylim = c(0.6,1),
+          names = c("BT", "SC", "gSC", "gBT2"),
           col = 'lightblue',
           ylab = 'correlation',
           cex.lab = exp.par,

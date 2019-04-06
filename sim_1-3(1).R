@@ -20,8 +20,8 @@ f = function(x,y,df)  pt(x-y, df = df)*dt(y,df = df)
 nvec = seq(5,500,by = 5)
 gamma.vec = seq(0,1,by = 0.01)
 df = 1;     alpha = 10
-lambda.vec = c(1.2,1.1,0.6,0)*4
-#lambda.vec = c(1.2,0.8,0.6,0)*4
+#lambda.vec = c(1.2,1.1,0.6,0)*4
+lambda.vec = c(1.2,0.8,0.6,0)*4
 pop_list = list()
 pop_beta_mat = NULL
 rankcons.mat1 = rankcons.mat2 = rankcons.mat3 = NULL
@@ -205,15 +205,16 @@ for (iter in 1:length(gamma.vec))
           axis.title=element_text(size=24,face="bold"),
           legend.title=element_text(size=24),
           legend.text=element_text(size=24))
-
+  
+  
 # computation of Frobenius norm of variance
-  n = 10
-  sqrt(sum(pop_list[[1]]$cov^2))
-  sqrt(sum(pop_list[[101]]$cov^2))
-  
-  
-  sum((A%*%pop_list[[1]]$cov^2)%*%t(A))
-  sum(A%*%pop_list[[101]]$cov^2%*%t(A))
+  # n = 10
+  # sqrt(sum(pop_list[[1]]$cov^2))
+  # sqrt(sum(pop_list[[101]]$cov^2))
+  # 
+  # 
+  # sum((A%*%pop_list[[1]]$cov^2)%*%t(A))
+  # sum(A%*%pop_list[[101]]$cov^2%*%t(A))
 
 # figure (heat map) for the entire rank consistency
 # size: 800 times 600  
@@ -271,110 +272,25 @@ for (iter in 1:length(gamma.vec))
           legend.text=element_text(size=28),
           legend.title=element_text(size=32))
   
-    
+  # save: lambda.vec = c(1.2,1.1,0.6,0)*4
+  ##       save.image("sim_1-3-1.rdata")
+  # save: lambda.vec = c(1.2,0.8,0.6,0)*4
+  ##       save.image("sim_1-3-2.rdata")  
+  
+  # row : gamma
+  # col : num
+  # load("sim_1-3-1.rdata")
+  # load("sim_1-3-2.rdata")  
+  idx = which(nvec %in% c(25, 50, 100, 250, 500))
+  plot(x = gamma.vec, y = rmat[,idx[1]], type = 'l', ylim = c(0,1),
+       lty = 1, xlim = c(0,1), 
+       ylab = 'prob', xlab = 'gamma')  
+  for (i in 2:length(idx)) 
+    lines(x = gamma.vec, y = rmat[,idx[i]], lty = i)
+
+
 
 # image(x = gamma.vec, y = nvec, rankcons.mat, ylab = 'n', xlab = 'gamma',
 #       useRaster = TRUE)
 
-
-# numerical simulations of BT
-n = 6
-iter = 1
-iter.num = 10000
-beta_mat = NULL
-
-for (iter in 1:iter.num)
-{
-  Gmat_hat = Qmat = matrix(0,p,p)
-  for (i in 1:(p-1) )
-  {
-    for (j in (i+1):p)
-    {
-      un = n
-      if ( (i == 2 & j == 3) ) un = alpha*n
-      if ( (i == 1 & j == 4) ) un = alpha*n
-      if ((i==3) & (j==4)) un = alpha*n
-      v = mean( ( (rt(un,df) + lambda.vec[i]) - 
-                    (rt(un,df) + lambda.vec[j])  ) >0 )                
-      Gmat_hat[i,j] = v 
-      Gmat_hat[j,i] = 1-v 
-      Qmat[i,j] = Qmat[j,i] = un
-    }
-  }
-  # set an intial parameter for btFUN
-  Qpmat = Qmat/sum(Qmat)*2
-  Qmat_fit$Qpmat = Qpmat
-  Qmat_fit$Gmat_hat = Gmat_hat
-  Qmat_fit$x = x
-  Qmat_fit$y = y
-  # fit the BT
-  beta_hat = btFun(Qmat_fit)  
-  beta_mat = rbind(beta_mat, beta_hat)
-}
-
-sum(Qmat)/2
-mean(beta_mat[,1] - beta_mat[,2]>0)
-# 
-# the ith row -> the result of gamma.vec[i]
-# gamma.v = 0 denotes BT and gamma.v = 1 denotes gBT.
-#rmat[1,]
-# the jth col -> the result of nvec[j]
-#rmat[,1]
-j = 34
-rmat[1,j]
-
-
-abline(h = 0)
-
-# numerical simulations of gBT
-jj = 57
-gamma.v = gamma.vec[jj]
-n = 20
-iter = 1
-iter.num = 10000
-beta_mat = NULL
-
-for (iter in 1:iter.num)
-{
-  Gmat_hat = Qmat = matrix(0,p,p)
-  for (i in 1:(p-1) )
-  {
-    for (j in (i+1):p)
-    {
-      un = n
-      if ( (i == 2 & j == 3) ) un = alpha*n
-      if ( (i == 1 & j == 4) ) un = alpha*n
-      if ((i==3) & (j==4)) un = alpha*n
-      v = mean( ( (rt(un,df) + lambda.vec[i]) - 
-                    (rt(un,df) + lambda.vec[j])  ) >0 )                
-      Gmat_hat[i,j] = v 
-      Gmat_hat[j,i] = 1-v 
-      Qmat[i,j] = Qmat[j,i] = un
-    }
-  }
-  # set an intial parameter for btFUN
-  Qpmat = Qmat/sum(Qmat)*2
-  wmat = (1/Qpmat)^gamma.v ; diag(wmat) = 0
-  Qmat_fit$Qpmat = Qpmat*wmat
-  Qmat_fit$Gmat_hat = Gmat_hat
-  Qmat_fit$x = x
-  Qmat_fit$y = y
-  # fit the BT
-  beta_hat = btFun(Qmat_fit)  
-  beta_mat = rbind(beta_mat, beta_hat)
-}
-
-sum(Qmat)/2
-mean(beta_mat[,1] - beta_mat[,2]>0)
-# 
-# the ith row -> the result of gamma.vec[i]
-# gamma.v = 0 denotes BT and gamma.v = 1 denotes gBT.
-#rmat[1,]
-# the jth col -> the result of nvec[j]
-#rmat[,1]
-j = which.min(abs(nvec-sum(Qmat)/2))
-rmat[jj,j]
-
-
-abline(h = 0)
 

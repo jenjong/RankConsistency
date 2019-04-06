@@ -45,8 +45,8 @@ s_idx = 1:n
   image(1:p,1:p,Qmat, col=rainbow(200), 
         xlab = 'j', ylab = 'k')
   
-  
-  
+##############################################################  
+#??????
   
   bt_est <- btFun(Qmat_fit)
   bt_result <- make_result(bt_est)

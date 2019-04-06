@@ -17,7 +17,7 @@ f = function(x,y,df)  pt(x-y, df = df)*dt(y,df = df)
 
 
 # set parameters in simulation
-nvec = seq(25,500,by = 5)
+nvec = seq(25,500,by = 25)
 gamma.vec = seq(0,1,by = 0.25)
 df = 1 ;     alpha = 5
 lambda.vec = c(1.2,1.1,0.6,0)*4
